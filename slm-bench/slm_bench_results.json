@@ -1,0 +1,62 @@
+[
+  {
+    "model": "smollm2:1.7b",
+    "wall_s": 2.0434674169955542,
+    "total_s": 2.036940791,
+    "load_s": 0.009105333,
+    "prompt_eval_s": 0.038,
+    "eval_s": 1.988,
+    "eval_tokens": 135,
+    "tokens_per_sec": 67.90744466800805,
+    "ttft_s": 0.047105333,
+    "response": "The sky appears blue due to a phenomenon called Rayleigh scattering. When sunlight enters Earth's atmosphere, it encounters molecules of gases such as nitrogen and oxygen. These tiny particles scatter the shorter wavelengths of light more than the longer ones, resulting in the blue light being dispersed at all angles, making our sky appear blue. Additionally, dust and water vapor can also contribute to this phenomenon by scattering both red and blue light.\n\nHowever, on a very cloudy day when there is no direct sunlight, the sky might not appear as blue due to other factors such as atmospheric conditions or cloud cover that block out most of the sun's rays, leading to a less vibrant color."
+  },
+  {
+    "model": "gemma2:2b",
+    "wall_s": 1.7288782079995144,
+    "total_s": 1.724918791,
+    "load_s": 0.021491458,
+    "prompt_eval_s": 0.059,
+    "eval_s": 1.643,
+    "eval_tokens": 99,
+    "tokens_per_sec": 60.255629945222154,
+    "ttft_s": 0.080491458,
+    "response": "The sky appears blue due to a phenomenon called Rayleigh scattering. When sunlight hits Earth's atmosphere, shorter wavelengths like blue and violet scatter more easily than longer wavelengths like red and orange. This scattered blue light is what we see as the color of the sky. \n\n**Counterexample:** The sky can appear red or orange during sunrise and sunset because the sunlight has to travel through more of the atmosphere at that time, scattering away most of the shorter blue and violet wavelengths."
+  },
+  {
+    "model": "llama3.2:3b",
+    "wall_s": 3.3703534999949625,
+    "total_s": 3.365798959,
+    "load_s": 0.013931,
+    "prompt_eval_s": 0.088,
+    "eval_s": 3.262,
+    "eval_tokens": 174,
+    "tokens_per_sec": 53.34150827713059,
+    "ttft_s": 0.101931,
+    "response": "The sky appears blue because of a phenomenon called Rayleigh scattering, where shorter wavelengths of light (such as blue and violet) are scattered more than longer wavelengths by the tiny molecules of gases in the atmosphere. This scattering effect is more pronounced for blue light, which is why it dominates our perception of the color of the sky. As a result, when sunlight enters Earth's atmosphere, the scattered blue light is what we see as the blue color of the sky.\n\nCounterexample: During sunrise and sunset, when the sun is low on the horizon, the sky can take on hues of red, orange, and pink. This occurs because the shorter wavelengths of light (like blue) are still being scattered by atmospheric molecules, but the longer wavelengths (like red and yellow) are able to pass through more directly, allowing them to dominate our perception of color during these times."
+  },
+  {
+    "model": "qwen2.5:3b",
+    "wall_s": 3.31952266600274,
+    "total_s": 3.312900958,
+    "load_s": 0.01179375,
+    "prompt_eval_s": 0.076,
+    "eval_s": 3.224,
+    "eval_tokens": 163,
+    "tokens_per_sec": 50.558312655086844,
+    "ttft_s": 0.08779375,
+    "response": "The sky appears blue because of a phenomenon called Rayleigh scattering. When sunlight enters Earth's atmosphere, it interacts with molecules and small particles such as nitrogen and oxygen in the air. Shorter wavelengths like blue light scatter more easily than longer wavelengths like red or yellow light. This is why we perceive the sky as blue during the day.\n\nHowever, there are counterexamples to this explanation. For instance, at sunrise and sunset, when the Sun's rays must pass through more of Earth's atmosphere (due to a greater angle between the observer and the Sun), longer wavelengths like red and orange light scatter less and reach us more directly, making these times appear more reddish or orangish.\n\nThis counterexample shows how different atmospheric conditions can cause variations in color perception even under what we consider \"normal\" sky conditions."
+  },
+  {
+    "model": "phi3:mini",
+    "wall_s": 5.142889540991746,
+    "total_s": 5.135291292,
+    "load_s": 0.007449875,
+    "prompt_eval_s": 0.076,
+    "eval_s": 5.051,
+    "eval_tokens": 256,
+    "tokens_per_sec": 50.68303306275985,
+    "ttft_s": 0.083449875,
+    "response": "1) The sky appears blue due to Rayleigh scattering: This phenomenon occurs when sunlight enters Earth's atmosphere and collides with molecules and tiny particles, causing shorter wavelength (blue light) waves to be scattered in different directions more so than other colors because of their shorter wavelength.\n2) The color blue is most effectively scattered due to the way it interacts with atmospherin airborne particles leading sunlight's path towards our eyes from a lower angle, such as during sunrise or sunset when we see red and orange hues instead. \n3) However, on days with heavy pollution or dust in the atmosphere, the sky may take on various shades of gray or even appear hazy because these particles are larger than air molecules causing Mie scattering which scatters all colors equally resulting in less blue appearance compared to clear skies and more white from a mix of scattered light.\n\nCounterexample: At sunset or during dawn, the sky often appears red or orange instead of blue due to Rayleigh Scattering becoming weaker as the Sun's position is nearer to our horizon; in addition with longer path through thicker atmosphere and more scattering occurr"
+  }
+]
