@@ -1,1 +1,35 @@
 # SlowAndSweet
+
+Benchmarks for small language models (SLMs) running locally via [Ollama](https://ollama.com/).
+
+## SLM Benchmark
+
+The script in [`slm-bench/slm_bench.py`](slm-bench/slm_bench.py) sends a fixed prompt
+(`"Explain why the sky appears blue in 3 sentences, then give one counterexample."`)
+to each model with `seed=42`, `temperature=0.7`, `num_predict=256`. Each model gets one
+warmup call before the measured run.
+
+### Results
+
+| Model        | Tokens | Eval (s) | Tokens/sec | TTFT (s) | Wall (s) |
+| ------------ | -----: | -------: | ---------: | -------: | -------: |
+| smollm2:1.7b |    135 |     1.99 |       67.9 |    0.047 |     2.04 |
+| gemma2:2b    |     99 |     1.64 |       60.3 |    0.080 |     1.73 |
+| llama3.2:3b  |    174 |     3.26 |       53.3 |    0.102 |     3.37 |
+| qwen2.5:3b   |    163 |     3.22 |       50.6 |    0.088 |     3.32 |
+| phi3:mini    |    256 |     5.05 |       50.7 |    0.083 |     5.14 |
+
+- **Tokens/sec** — generation throughput (`eval_count / eval_duration`).
+- **TTFT** — time to first token, approximated as `load_duration + prompt_eval_duration`.
+- **Wall** — end-to-end request latency from the client.
+
+Raw measurements (including full responses) are in
+[`slm-bench/slm_bench_results.json`](slm-bench/slm_bench_results.json).
+
+### Reproducing
+
+```sh
+ollama serve  # in another terminal
+for m in smollm2:1.7b gemma2:2b llama3.2:3b qwen2.5:3b phi3:mini; do ollama pull "$m"; done
+python3 slm-bench/slm_bench.py
+```
