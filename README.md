@@ -33,3 +33,26 @@ ollama serve  # in another terminal
 for m in smollm2:1.7b gemma2:2b llama3.2:3b qwen2.5:3b phi3:mini; do ollama pull "$m"; done
 python3 slm-bench/slm_bench.py
 ```
+
+Compute and memory consumption for 10 prompts per model is captured in
+[`resources.md`](resources.md), produced by
+[`slm-bench/resources_bench.py`](slm-bench/resources_bench.py).
+
+## SLM Deployment Spec
+
+[`slm-deploy/`](slm-deploy/) defines a Kubernetes-inspired YAML schema for declaring
+which SLMs should be pre-loaded on a host and validating that they fit in the
+node's resource budget.
+
+- [`slm-deploy/node.yaml`](slm-deploy/node.yaml) — `kind: Node`, declares `capacity`
+  and `allocatable` (memory / cpu / gpu) plus `gpu.shareable: true` for Apple
+  Silicon's single shared GPU.
+- [`slm-deploy/slms.yaml`](slm-deploy/slms.yaml) — one `kind: SLMDeployment` document
+  per model, with `replicas` and K8s-style `resources.requests` / `resources.limits`.
+- [`slm-deploy/validate.py`](slm-deploy/validate.py) — sums `replicas × requests`
+  across all deployments and compares to `allocatable`. Prints a fit table; exits
+  non-zero on over-commit. Stdlib only (no PyYAML dependency).
+
+```sh
+python3 slm-deploy/validate.py slm-deploy/node.yaml slm-deploy/slms.yaml
+```

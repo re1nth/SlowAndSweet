@@ -1,0 +1,23 @@
+# Declares the physical node's resource budget for SLM workloads.
+# `capacity` is the raw machine total; `allocatable` is what can actually be
+# scheduled (capacity minus a headroom reserve for the OS and other apps).
+apiVersion: slowandsweet/v1
+kind: Node
+metadata:
+  name: local-mac
+spec:
+  capacity:
+    memory: 16Gi
+    cpu: 8000m
+    gpu: 1
+  allocatable:
+    memory: 12Gi
+    cpu: 7000m
+    gpu: 1
+  gpu:
+    # On Apple Silicon the GPU is a single shared device backed by unified
+    # memory, so multiple replicas can use it concurrently. With `shareable:
+    # true`, the validator only requires `request <= capacity` per replica
+    # and does not sum GPU requests across replicas (memory is what actually
+    # bounds concurrency here).
+    shareable: true

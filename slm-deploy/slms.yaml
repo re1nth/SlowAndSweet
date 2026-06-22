@@ -1,0 +1,71 @@
+# Declares which SLMs should be pre-loaded and how many replicas of each.
+# Resource numbers below are starting points informed by the peak RSS values
+# in resources.md; tune per workload. Each replica is one independently
+# loaded copy of the model (its own weights resident in memory).
+apiVersion: slowandsweet/v1
+kind: SLMDeployment
+metadata:
+  name: smollm2
+spec:
+  model: smollm2:1.7b
+  replicas: 2
+  resources:
+    requests:
+      memory: 2Gi
+      cpu: 500m
+      gpu: 1
+    limits:
+      memory: 4Gi
+      cpu: 2000m
+      gpu: 1
+---
+apiVersion: slowandsweet/v1
+kind: SLMDeployment
+metadata:
+  name: gemma2
+spec:
+  model: gemma2:2b
+  replicas: 1
+  resources:
+    requests:
+      memory: 3Gi
+      cpu: 1000m
+      gpu: 1
+    limits:
+      memory: 6Gi
+      cpu: 2000m
+      gpu: 1
+---
+apiVersion: slowandsweet/v1
+kind: SLMDeployment
+metadata:
+  name: llama32
+spec:
+  model: llama3.2:3b
+  replicas: 1
+  resources:
+    requests:
+      memory: 4Gi
+      cpu: 1000m
+      gpu: 1
+    limits:
+      memory: 6Gi
+      cpu: 2000m
+      gpu: 1
+---
+apiVersion: slowandsweet/v1
+kind: SLMDeployment
+metadata:
+  name: qwen25
+spec:
+  model: qwen2.5:3b
+  replicas: 1
+  resources:
+    requests:
+      memory: 4Gi
+      cpu: 1000m
+      gpu: 1
+    limits:
+      memory: 7Gi
+      cpu: 2000m
+      gpu: 1
