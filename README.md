@@ -56,3 +56,36 @@ node's resource budget.
 ```sh
 python3 slm-deploy/validate.py slm-deploy/node.yaml slm-deploy/slms.yaml
 ```
+
+## SLM Queue Server
+
+[`slm-queue/`](slm-queue/) is a local prototype of a queue + worker pool that
+consumes the SLM deployment spec. The HTTP server reads `slm-deploy/slms.yaml`,
+spawns `replicas` worker threads per declared model, and routes each incoming
+prompt to a model via simple rule-based heuristics. See
+[`slm-queue/README.md`](slm-queue/README.md) for the architecture, routing
+rules, and a 10-prompt experiment.
+
+- [`slm-queue/router.py`](slm-queue/router.py) — `choose_model(prompt, available)`:
+  code-ish prompts → qwen2.5, math/reasoning → llama3.2, long prompts → gemma2,
+  default → smollm2.
+- [`slm-queue/server.py`](slm-queue/server.py) — `ThreadingHTTPServer` with an
+  in-memory `queue.Queue` per model and one thread per replica. All workers call
+  the local `ollama serve` HTTP API.
+- [`slm-queue/client.py`](slm-queue/client.py) — demo client; submits a batch of
+  prompts and polls until each completes.
+
+Endpoints:
+
+| Method | Path           | Body / Response                                    |
+| ------ | -------------- | -------------------------------------------------- |
+| POST   | `/tasks`       | `{"prompt": "..."}` → `{"task_id", "model"}`       |
+| GET    | `/tasks/<id>`  | task state: `status`, `model`, `worker`, `result`  |
+| GET    | `/status`      | queue depths + task counters + worker count       |
+
+```sh
+ollama serve  # in another terminal; set OLLAMA_NUM_PARALLEL=N for real
+              # concurrent generation when any model has replicas > 1
+python3 slm-queue/server.py --port 8080
+python3 slm-queue/client.py --base http://127.0.0.1:8080
+```
