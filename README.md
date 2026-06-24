@@ -62,9 +62,12 @@ python3 slm-deploy/validate.py slm-deploy/node.yaml slm-deploy/slms.yaml
 [`slm-queue/`](slm-queue/) is a local prototype of a queue + worker pool that
 consumes the SLM deployment spec. The HTTP server reads `slm-deploy/slms.yaml`,
 spawns `replicas` worker threads per declared model, and routes each incoming
-prompt to a model via simple rule-based heuristics. See
-[`slm-queue/README.md`](slm-queue/README.md) for the architecture, routing
-rules, and a 10-prompt experiment.
+prompt to a model via simple rule-based heuristics. It also accepts whole
+**DAG plans** on the producer side (JSON in [`slm-queue/plans/`](slm-queue/plans/)):
+nodes can reference upstream outputs via `{{node.result}}`, a background runner
+walks the topology, and `GET /plans/<run_id>/ui` renders a live Mermaid diagram
++ status table. See [`slm-queue/README.md`](slm-queue/README.md) for the
+architecture, routing rules, and experiments.
 
 - [`slm-queue/router.py`](slm-queue/router.py) — `choose_model(prompt, available)`:
   code-ish prompts → qwen2.5, math/reasoning → llama3.2, long prompts → gemma2,

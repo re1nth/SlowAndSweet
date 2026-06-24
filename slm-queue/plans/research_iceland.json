@@ -1,0 +1,26 @@
+{
+  "plan_id": "research_iceland",
+  "description": "Diamond DAG: gather two parallel research strands about Iceland, fuse them into a summary, then derive follow-up questions.",
+  "nodes": [
+    {
+      "id": "economy",
+      "prompt": "List 5 concise facts about Iceland's economy in bullet form. No preamble.",
+      "depends_on": []
+    },
+    {
+      "id": "history",
+      "prompt": "List 5 concise facts about Iceland's history in bullet form. No preamble.",
+      "depends_on": []
+    },
+    {
+      "id": "summary",
+      "prompt": "Combine the following two lists into one cohesive paragraph (no bullets), under 100 words.\n\nEconomy facts:\n{{economy.result}}\n\nHistory facts:\n{{history.result}}",
+      "depends_on": ["economy", "history"]
+    },
+    {
+      "id": "questions",
+      "prompt": "Based on this summary, generate exactly 3 follow-up research questions, numbered:\n\n{{summary.result}}",
+      "depends_on": ["summary"]
+    }
+  ]
+}

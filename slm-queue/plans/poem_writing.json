@@ -1,0 +1,26 @@
+{
+  "plan_id": "poem_writing",
+  "description": "Sequential creative flow: pick a theme, brainstorm imagery and emotions in parallel, then write the poem and title it.",
+  "nodes": [
+    {
+      "id": "theme",
+      "prompt": "Pick one specific evocative theme for a short poem in 5 words or fewer. Reply with just the theme, no preamble.",
+      "depends_on": []
+    },
+    {
+      "id": "imagery",
+      "prompt": "Generate 5 vivid visual images relating to this theme. Bullet form, no preamble.\n\nTheme: {{theme.result}}",
+      "depends_on": ["theme"]
+    },
+    {
+      "id": "emotions",
+      "prompt": "List 3 emotional notes that fit this theme. Bullet form, no preamble.\n\nTheme: {{theme.result}}",
+      "depends_on": ["theme"]
+    },
+    {
+      "id": "poem",
+      "prompt": "Write a 4-stanza poem (4 lines per stanza) using the imagery and emotional palette below. Theme: {{theme.result}}\n\nImagery:\n{{imagery.result}}\n\nEmotions:\n{{emotions.result}}",
+      "depends_on": ["theme", "imagery", "emotions"]
+    }
+  ]
+}

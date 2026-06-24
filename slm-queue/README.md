@@ -33,21 +33,32 @@ The worker pool topology is read directly from
 
 ## Files
 
-| File         | Purpose                                                    |
-| ------------ | ---------------------------------------------------------- |
-| `server.py`  | HTTP server, dispatcher, per-model queues, worker threads. |
-| `router.py`  | `choose_model(prompt, available)` — rule-based routing.    |
-| `client.py`  | Demo client; submits a batch and polls until done.         |
+| File             | Purpose                                                          |
+| ---------------- | ---------------------------------------------------------------- |
+| `server.py`      | HTTP server, dispatcher, per-model queues, worker threads.       |
+| `router.py`      | `choose_model(prompt, available)` — rule-based routing.          |
+| `planner.py`     | DAG plan model + `PlanRunner` that drives a plan to completion.  |
+| `ui.py`          | HTML rendering (Mermaid diagram + status table) for plan runs.   |
+| `client.py`      | Demo client; submits a batch and polls until done.               |
+| `plans/*.json`   | Hand-authored example DAG plans (see "Producer side" below).     |
 
 ## Endpoints
 
-| Method | Path           | Body / Response                                                |
-| ------ | -------------- | -------------------------------------------------------------- |
-| POST   | `/tasks`       | `{"prompt": "..."}` → `202 {"task_id", "model"}`               |
-| GET    | `/tasks/<id>`  | task state: `status`, `model`, `worker`, `result`, timestamps  |
-| GET    | `/status`      | queue depths, task counters, worker count                      |
+| Method | Path                          | Purpose                                                                |
+| ------ | ----------------------------- | ---------------------------------------------------------------------- |
+| POST   | `/tasks`                      | `{"prompt": "..."}` → `202 {"task_id", "model"}`                       |
+| GET    | `/tasks/<id>`                 | task state: `status`, `model`, `worker`, `result`, timestamps          |
+| GET    | `/status`                     | queue depths, task counters, worker count                              |
+| POST   | `/plans`                      | `{"plan_file": "..."}` or `{"plan": {...}}` → `202 {"run_id"}`        |
+| GET    | `/plans`                      | list of runs + plan files in `plans/`                                  |
+| GET    | `/plans/<run_id>`             | full plan run state as JSON                                            |
+| GET    | `/plans/<run_id>/ui`          | HTML status page (Mermaid graph + table, auto-refresh)                |
+| GET    | `/plans/from-file/<name>`     | convenience: submit a plan file via browser, redirects to its UI       |
+| GET    | `/ui`                         | landing page listing all plan files and runs                           |
 
-`status` transitions: `pending` → `running` → `done` (or `error`).
+Task `status` transitions: `pending` → `running` → `done` (or `error`).
+Plan-node `status` transitions: `pending` → `queued` → `running` → `done`
+(or `error`).
 
 ## Routing
 
@@ -158,9 +169,132 @@ on one worker. The speedup is bounded by the slowest *per-model* queue
   parallelism (not just dispatch parallelism), restart ollama with
   `OLLAMA_NUM_PARALLEL` >= the maximum `replicas` in `slms.yaml`.
 
+## Producer side: DAG plans
+
+The endpoints above let an outside system (think: Claude Code generating a
+plan from a high-level prompt) submit a *plan* — a directed acyclic graph
+of small prompt nodes — and watch it execute as upstream results feed
+downstream nodes. The plan is the snapshot of what's to be done; the
+runner walks the topology and submits each ready node to the same queue
+described above.
+
+### Plan schema
+
+A plan is a JSON document with a list of nodes. Each node declares its
+upstream dependencies, and its prompt may reference any direct
+upstream's output via `{{node_id.result}}`.
+
+```json
+{
+  "plan_id": "research_iceland",
+  "description": "Diamond DAG: two parallel research strands, fused, then questions.",
+  "nodes": [
+    {"id": "economy",   "prompt": "List 5 facts about Iceland's economy.",  "depends_on": []},
+    {"id": "history",   "prompt": "List 5 facts about Iceland's history.",  "depends_on": []},
+    {"id": "summary",   "prompt": "Combine into a paragraph:\nEconomy:\n{{economy.result}}\nHistory:\n{{history.result}}",
+                                                                            "depends_on": ["economy", "history"]},
+    {"id": "questions", "prompt": "Generate 3 follow-up questions:\n{{summary.result}}",
+                                                                            "depends_on": ["summary"]}
+  ]
+}
+```
+
+The loader validates that:
+- node ids are unique,
+- every `depends_on` entry references a real node,
+- every `{{X.result}}` placeholder corresponds to a declared direct dep,
+- the graph has no cycles (Kahn topo sort).
+
+### Execution
+
+Each plan run gets its own background `PlanRunner` thread. On every tick
+it:
+
+1. Finds nodes whose `depends_on` are all `done` and submits each to the
+   `Dispatcher` (so the router still picks the model per-node, on the
+   *resolved* prompt).
+2. Mirrors the dispatcher's task state into the plan-node state.
+3. Terminates when all nodes are `done` (run = `done`) or no node can
+   make further progress (run = `error`).
+
+The resolved prompt (with parents' outputs substituted in) is what the
+router sees, so downstream nodes often end up routed differently from
+their template — e.g. a templated summary node typically grows past the
+500-char threshold and routes to `gemma2`.
+
+### HTML status page
+
+`GET /plans/<run_id>/ui` returns a self-contained HTML page with a
+Mermaid `graph TD` diagram (nodes colored by status) and a table of
+nodes (status, assigned model, worker, elapsed time, result or resolved
+prompt). The page auto-refreshes every 2s while the run is `running`
+and stops refreshing once it's `done` or `error`.
+
+`GET /ui` is a landing page listing both the plan files on disk and all
+runs that have happened in this server's lifetime.
+
+![DAG status page after a completed run](screenshots/dag_run.png)
+
+The screenshot above is the live view of a 5-node DAG run
+(`antikythera_brief || greek_astronomy_brief → comparison →
+modern_research → open_questions`) just after it completed. Mermaid
+renders the topology with each node tinted by status (green = `done`).
+The table below lists per-node model assignment, worker label, elapsed
+time, and a snippet of either the resolved prompt or the result.
+
+### Submitting
+
+```sh
+# from JSON via POST
+curl -s -X POST http://127.0.0.1:8080/plans \
+  -H 'Content-Type: application/json' \
+  -d '{"plan_file": "research_iceland.json"}'
+# {"run_id": "a5be245ff3ce", "plan_id": "research_iceland"}
+
+# or just open the browser at http://127.0.0.1:8080/ui and click a plan file
+```
+
+### Experiment — both example plans
+
+Both bundled plans run cleanly against the default 5-worker pool.
+Numbers below are from one local run (`OLLAMA_NUM_PARALLEL=1`, default).
+
+**`research_iceland`** — diamond: `economy || history → summary → questions`.
+Wall: **13.36s**.
+
+| Node       | Model         | Worker            | Queue (s) | Gen (s) | Tokens |
+| ---------- | ------------- | ----------------- | --------: | ------: | -----: |
+| economy    | `smollm2:1.7b` | `smollm2:1.7b#0` |      0.00 |    4.32 |    160 |
+| history    | `smollm2:1.7b` | `smollm2:1.7b#1` |      0.00 |    4.07 |    136 |
+| summary    | `gemma2:2b`    | `gemma2:2b#0`    |      0.00 |    4.64 |    139 |
+| questions  | `gemma2:2b`    | `gemma2:2b#0`    |      0.00 |    3.26 |    175 |
+
+**`poem_writing`** — funnel: `theme → (imagery || emotions) → poem`. Wall:
+**7.28s**.
+
+| Node      | Model         | Worker            | Queue (s) | Gen (s) | Tokens |
+| --------- | ------------- | ----------------- | --------: | ------: | -----: |
+| theme     | `smollm2:1.7b` | `smollm2:1.7b#1` |      0.00 |    0.38 |      4 |
+| imagery   | `smollm2:1.7b` | `smollm2:1.7b#0` |      0.00 |    1.92 |    115 |
+| emotions  | `smollm2:1.7b` | `smollm2:1.7b#1` |      0.00 |    0.65 |     33 |
+| poem      | `gemma2:2b`    | `gemma2:2b#0`    |      0.00 |    3.84 |    192 |
+
+Observations:
+
+- **Parallelism along the cut.** Independent siblings (`economy ||
+  history`, `imagery || emotions`) were picked up by the two smollm2
+  replicas in the same tick — both saw queue wait = 0.00s.
+- **Routing adapts to the resolved prompt.** Downstream nodes templated
+  in their parents' outputs, pushing the resolved prompt past the
+  router's 500-char threshold, so `summary`, `questions`, and `poem`
+  all routed to `gemma2`.
+- **The producer side is decoupled from the consumer side.** Plans only
+  speak in prompts and dependencies; everything model-selection /
+  routing / replica-dispatch happens downstream in the existing queue.
+
 ## Limitations
 
 This is a prototype, not a production queue. Not implemented: persistence
 (restart loses queue + results), backpressure / max queue depth, retries,
 auth, streaming responses, distributed workers, cancellation,
-result-eviction (results table grows unbounded).
+result-eviction (results & plan runs tables grow unbounded).
