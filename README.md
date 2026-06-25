@@ -66,8 +66,11 @@ prompt to a model via simple rule-based heuristics. It also accepts whole
 **DAG plans** on the producer side (JSON in [`slm-queue/plans/`](slm-queue/plans/)):
 nodes can reference upstream outputs via `{{node.result}}`, a background runner
 walks the topology, and `GET /plans/<run_id>/ui` renders a live Mermaid diagram
-+ status table. See [`slm-queue/README.md`](slm-queue/README.md) for the
-architecture, routing rules, and experiments.
++ status table. An MCP adapter ([`slm-queue/mcp_server.py`](slm-queue/mcp_server.py))
+exposes `slm_submit_plan` / `slm_wait_plan` as MCP tools so Claude Code can
+delegate fan-out subtasks to the local SLM workers and compose the final
+answer itself. See [`slm-queue/README.md`](slm-queue/README.md) for the
+architecture, routing rules, MCP setup, and experiments.
 
 - [`slm-queue/router.py`](slm-queue/router.py) — `choose_model(prompt, available)`:
   code-ish prompts → qwen2.5, math/reasoning → llama3.2, long prompts → gemma2,

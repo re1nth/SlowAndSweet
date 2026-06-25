@@ -33,14 +33,16 @@ The worker pool topology is read directly from
 
 ## Files
 
-| File             | Purpose                                                          |
-| ---------------- | ---------------------------------------------------------------- |
-| `server.py`      | HTTP server, dispatcher, per-model queues, worker threads.       |
-| `router.py`      | `choose_model(prompt, available)` — rule-based routing.          |
-| `planner.py`     | DAG plan model + `PlanRunner` that drives a plan to completion.  |
-| `ui.py`          | HTML rendering (Mermaid diagram + status table) for plan runs.   |
-| `client.py`      | Demo client; submits a batch and polls until done.               |
-| `plans/*.json`   | Hand-authored example DAG plans (see "Producer side" below).     |
+| File                  | Purpose                                                          |
+| --------------------- | ---------------------------------------------------------------- |
+| `server.py`           | HTTP server, dispatcher, per-model queues, worker threads.       |
+| `router.py`           | `choose_model(prompt, available)` — rule-based routing.          |
+| `planner.py`          | DAG plan model + `PlanRunner` that drives a plan to completion.  |
+| `ui.py`               | HTML rendering (Mermaid diagram + status table) for plan runs.   |
+| `client.py`           | Demo client; submits a batch and polls until done.               |
+| `mcp_server.py`       | MCP server exposing `slm_submit_plan` / `slm_wait_plan` tools.   |
+| `plans/*.json`        | Hand-authored example DAG plans (see "Producer side" below).     |
+| `requirements.txt`    | Only the MCP server has a pip dep (`mcp[cli]`); core is stdlib.  |
 
 ## Endpoints
 
@@ -291,6 +293,100 @@ Observations:
 - **The producer side is decoupled from the consumer side.** Plans only
   speak in prompts and dependencies; everything model-selection /
   routing / replica-dispatch happens downstream in the existing queue.
+
+## Delegating from Claude Code via MCP
+
+`mcp_server.py` exposes the queue as two tools over the
+[Model Context Protocol](https://modelcontextprotocol.io/), so a Claude
+Code session can decompose a user prompt into a small DAG, hand the
+whole plan to local SLM workers, and compose the final answer itself —
+instead of doing every leaf step with the frontier model.
+
+### Tool surface
+
+| Tool              | Inputs                  | Returns                                            |
+| ----------------- | ----------------------- | -------------------------------------------------- |
+| `slm_submit_plan` | `plan: dict`            | `{"run_id", "plan_id"}` — DAG starts in background |
+| `slm_wait_plan`   | `run_id`, `timeout_s?`  | full plan snapshot when run hits a terminal state  |
+
+Both tools speak to the queue's existing HTTP endpoints; the MCP server
+is a thin protocol adapter.
+
+### Setup
+
+```sh
+# Once
+python3 -m venv .venv
+.venv/bin/pip install -r slm-queue/requirements.txt    # mcp[cli]
+
+# Each session: start both processes
+python3 slm-queue/server.py --port 8080      &        # queue + workers
+.venv/bin/python slm-queue/mcp_server.py --port 8090 &  # MCP adapter
+```
+
+Add to `.mcp.json` (project root or `~/.claude/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "slm-queue": {
+      "type": "http",
+      "url": "http://127.0.0.1:8090/mcp"
+    }
+  }
+}
+```
+
+Restart Claude Code; `slm_submit_plan` and `slm_wait_plan` show up in
+the tool list.
+
+### Delegation pattern
+
+When Claude Code gets a user prompt that benefits from fan-out (e.g.
+parallel research, drafting boilerplate, summarizing many items), it
+should:
+
+1. **Decompose** the prompt into a DAG — usually a handful of
+   independent leaf nodes that produce raw material, then one or two
+   downstream nodes that fuse them.
+2. **Call `slm_submit_plan`** with the JSON plan, receive a `run_id`.
+3. **Call `slm_wait_plan`** to block until all nodes finish.
+4. **Compose** the final answer from the returned `nodes[id].result`
+   strings. Claude stays responsible for synthesis and quality; the
+   SLMs only do the cheap mechanical leg-work.
+
+What stays with the frontier model: planning the DAG, judging output
+quality, the final synthesis. What moves to local SLMs: the per-node
+generation work.
+
+### E2E smoke test
+
+```sh
+# With both servers running:
+.venv/bin/python -c "
+import json, urllib.request
+# (init + tools/call elided — see slm-queue/mcp_server.py docstring)
+"
+```
+
+The plan below was submitted and waited via the MCP tools and finished
+in **3.94s** wall:
+
+```
+facts_es ─┐
+          ├─► compare
+facts_jp ─┘
+```
+
+| Node      | Status | Model         | Worker            |
+| --------- | ------ | ------------- | ----------------- |
+| facts_es  | done   | smollm2:1.7b  | smollm2:1.7b#1    |
+| facts_jp  | done   | smollm2:1.7b  | smollm2:1.7b#0    |
+| compare   | done   | qwen2.5:3b    | qwen2.5:3b#0      |
+
+(The compare node routed to qwen2.5 rather than gemma2 because the
+substituted Japan facts contained the substring "code" in "code of
+conduct" — an artefact of the router's simple substring matching.)
 
 ## Limitations
 
