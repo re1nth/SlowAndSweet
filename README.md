@@ -63,6 +63,7 @@ The repo is a chain of small artifacts that build up to that flow:
 | [`slm-deploy/`](slm-deploy/) | How do you declare which models live on the host and how many copies of each? |
 | [`slm-queue/`](slm-queue/) | How do you submit work, route it to a model, and run a multi-step DAG of prompts? |
 | [`slm-queue/mcp_server.py`](slm-queue/mcp_server.py) | How does the frontier model actually call into the pool? |
+| [`slm-experiments/`](slm-experiments/) | Does the mixture actually beat frontier-only? SxS harness with a blind reviewer over 10 cases. |
 
 ### `slm-bench/` — pick the SLMs
 

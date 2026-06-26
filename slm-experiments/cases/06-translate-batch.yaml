@@ -1,0 +1,61 @@
+id: translate-batch
+name: Translate three sentences in parallel
+category: translation
+notes: >
+  Three independent translations to Spanish, French, German. SLMs handle
+  each leaf, frontier formats the final block.
+max_tokens: 400
+temperature: 0.0
+
+solo_prompt: |
+  Translate the sentence "The weather is unusually warm for this time of
+  year and the gardens are blooming early" into Spanish, French, and
+  German. Return exactly three lines, each labeled with the language:
+
+  Spanish: <translation>
+  French: <translation>
+  German: <translation>
+
+mixture_plan:
+  plan_id: translate-batch
+  description: Translate sentence into three languages in parallel
+  nodes:
+    - id: es
+      depends_on: []
+      prompt: |
+        Translate to Spanish. Return only the Spanish sentence, nothing
+        else.
+
+        Sentence: The weather is unusually warm for this time of year and
+        the gardens are blooming early.
+    - id: fr
+      depends_on: []
+      prompt: |
+        Translate to French. Return only the French sentence, nothing
+        else.
+
+        Sentence: The weather is unusually warm for this time of year and
+        the gardens are blooming early.
+    - id: de
+      depends_on: []
+      prompt: |
+        Translate to German. Return only the German sentence, nothing
+        else.
+
+        Sentence: The weather is unusually warm for this time of year and
+        the gardens are blooming early.
+
+mixture_composer_prompt: |
+  Format these three translations as a labeled block. Return exactly
+  three lines:
+
+  Spanish: <translation>
+  French: <translation>
+  German: <translation>
+
+  If any line is clearly not in the right language or contains extra
+  English commentary, silently fix it.
+
+  ES: {leaf:es}
+  FR: {leaf:fr}
+  DE: {leaf:de}

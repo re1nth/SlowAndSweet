@@ -1,0 +1,47 @@
+id: brainstorm-ideas
+name: Diversified brainstorm then curate
+category: brainstorming
+notes: >
+  Classic "diverge then converge": three SLM workers each propose ideas
+  from a different angle, frontier selects the top 5 and dedupes.
+max_tokens: 700
+temperature: 0.7
+
+solo_prompt: |
+  A small coffee shop wants to draw in remote workers during weekday
+  afternoons. List 5 specific, concrete ideas they could try. Each
+  should be one sentence, distinct, and actionable.
+
+mixture_plan:
+  plan_id: brainstorm-ideas
+  description: Brainstorm from three different angles in parallel
+  nodes:
+    - id: angle_space
+      depends_on: []
+      prompt: |
+        Brainstorm 4 ideas a small coffee shop could try to draw remote
+        workers in weekday afternoons, focusing on PHYSICAL SPACE and
+        amenities (seating, outlets, lighting, noise). One sentence each,
+        concrete.
+    - id: angle_promo
+      depends_on: []
+      prompt: |
+        Brainstorm 4 ideas a small coffee shop could try to draw remote
+        workers in weekday afternoons, focusing on PRICING AND PROMOTIONS
+        (offers, packages, memberships). One sentence each, concrete.
+    - id: angle_community
+      depends_on: []
+      prompt: |
+        Brainstorm 4 ideas a small coffee shop could try to draw remote
+        workers in weekday afternoons, focusing on COMMUNITY AND EVENTS
+        (meetups, partnerships, social). One sentence each, concrete.
+
+mixture_composer_prompt: |
+  You have three sets of brainstormed ideas for drawing remote workers
+  to a coffee shop on weekday afternoons. Select the 5 strongest ideas
+  overall, dedupe near-duplicates, and rewrite each as one crisp
+  actionable sentence. Return them as a numbered list 1-5.
+
+  SPACE: {leaf:angle_space}
+  PROMO: {leaf:angle_promo}
+  COMMUNITY: {leaf:angle_community}

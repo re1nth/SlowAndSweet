@@ -1,0 +1,73 @@
+id: classify-reviews
+name: Batch sentiment classification
+category: classification
+notes: >
+  Five product reviews, each classified independently as positive /
+  negative / mixed with a one-line justification. Frontier aggregates
+  into a summary table.
+max_tokens: 600
+temperature: 0.0
+
+solo_prompt: |
+  Classify each of these five product reviews as POSITIVE, NEGATIVE, or
+  MIXED. Return a numbered list where each line is:
+  `<n>. <label> — <one-line justification>`.
+
+  1. "Battery lasts two full days, but the camera is a real disappointment."
+  2. "Honestly the best laptop I've ever used. Fast, quiet, great display."
+  3. "Setup was painful and customer support never responded."
+  4. "Decent for the price. Nothing exciting, nothing terrible."
+  5. "I returned it after a week — the screen flickers constantly."
+
+mixture_plan:
+  plan_id: classify-reviews
+  description: Classify each review in parallel
+  nodes:
+    - id: r1
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "Battery lasts two full days, but the camera is a real disappointment."
+    - id: r2
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "Honestly the best laptop I've ever used. Fast, quiet, great display."
+    - id: r3
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "Setup was painful and customer support never responded."
+    - id: r4
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "Decent for the price. Nothing exciting, nothing terrible."
+    - id: r5
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "I returned it after a week — the screen flickers constantly."
+
+mixture_composer_prompt: |
+  Five product reviews were each independently classified. Compile them
+  into a clean numbered list in the original order. Each line:
+  `<n>. <LABEL> — <justification>`. If any classification looks clearly
+  wrong (e.g. mislabeling a strongly negative review as positive),
+  silently correct it.
+
+  1: {leaf:r1}
+  2: {leaf:r2}
+  3: {leaf:r3}
+  4: {leaf:r4}
+  5: {leaf:r5}

@@ -1,0 +1,42 @@
+id: compare-contrast
+name: Compare and contrast
+category: analysis
+notes: >
+  Two parallel "describe X" leaves, frontier writes the comparison. The
+  comparative reasoning is the part that benefits from the frontier model.
+max_tokens: 700
+temperature: 0.2
+
+solo_prompt: |
+  Compare and contrast electric scooters and electric bicycles as urban
+  commuting options. Cover: typical range, regulation in most US cities,
+  rider effort, and storage/parking. Structure your answer with a short
+  intro then four labeled sections (Range, Regulation, Effort,
+  Storage). 5-8 sentences total.
+
+mixture_plan:
+  plan_id: compare-contrast
+  description: Describe each independently then frontier compares
+  nodes:
+    - id: scooter
+      depends_on: []
+      prompt: |
+        Describe electric scooters as an urban commuting option in 3-4
+        sentences. Cover: typical range, common regulation in US cities,
+        rider effort, storage/parking.
+    - id: bike
+      depends_on: []
+      prompt: |
+        Describe electric bicycles as an urban commuting option in 3-4
+        sentences. Cover: typical range, common regulation in US cities,
+        rider effort, storage/parking.
+
+mixture_composer_prompt: |
+  Write a compare-and-contrast of electric scooters vs electric
+  bicycles as urban commuting options, using the two descriptions
+  below. Structure: a short intro then four labeled sections (Range,
+  Regulation, Effort, Storage). 5-8 sentences total. Do not just
+  concatenate the inputs.
+
+  E-SCOOTERS: {leaf:scooter}
+  E-BIKES: {leaf:bike}

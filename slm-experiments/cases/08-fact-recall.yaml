@@ -1,0 +1,47 @@
+id: fact-recall
+name: Multi-subject fact recall
+category: fact-recall
+notes: >
+  Three independent factual questions. Frontier-solo just answers them.
+  Mixture asks each one of an SLM and the frontier formats the answer
+  block — likely to expose SLM factual errors.
+max_tokens: 400
+temperature: 0.0
+
+solo_prompt: |
+  Answer each of these three questions in one short sentence. Return
+  exactly three lines, each prefixed `Q1:`, `Q2:`, `Q3:`.
+
+  Q1. What is the chemical symbol for tungsten?
+  Q2. Who painted "The Persistence of Memory"?
+  Q3. In what year did the Apollo 11 crew first land on the Moon?
+
+mixture_plan:
+  plan_id: fact-recall
+  description: One SLM call per question
+  nodes:
+    - id: q1
+      depends_on: []
+      prompt: |
+        Answer in one short sentence (no preamble): What is the chemical
+        symbol for tungsten?
+    - id: q2
+      depends_on: []
+      prompt: |
+        Answer in one short sentence (no preamble): Who painted "The
+        Persistence of Memory"?
+    - id: q3
+      depends_on: []
+      prompt: |
+        Answer in one short sentence (no preamble): In what year did the
+        Apollo 11 crew first land on the Moon?
+
+mixture_composer_prompt: |
+  Format the three answers as `Q1:`, `Q2:`, `Q3:` lines, one short
+  sentence each. If any answer is clearly wrong (e.g. an incorrect
+  chemical symbol, painter, or year), silently correct it before
+  including it.
+
+  Q1 raw: {leaf:q1}
+  Q2 raw: {leaf:q2}
+  Q3 raw: {leaf:q3}

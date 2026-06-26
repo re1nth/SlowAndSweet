@@ -1,0 +1,72 @@
+id: multi-doc-summary
+name: Multi-document summarization
+category: summarization
+notes: >
+  Classic fan-out: summarize three short snippets in parallel, then have
+  the frontier compose a unified summary. Cheap leaves, mechanical work.
+max_tokens: 600
+temperature: 0.2
+
+solo_prompt: |
+  Read the three short articles below and produce a single unified summary
+  in 4-5 sentences that covers the main point of each. Do not list them;
+  weave them into a coherent paragraph.
+
+  ARTICLE 1:
+  The James Webb Space Telescope has detected complex organic molecules in
+  the atmosphere of a distant exoplanet, raising fresh interest in
+  whether such compounds are widespread in planet formation. The signal
+  was confirmed across multiple observation windows.
+
+  ARTICLE 2:
+  A new study from MIT shows that lithium-iron-phosphate batteries can
+  retain up to 92% of their capacity after 5,000 charge cycles when
+  paired with a redesigned cooling system. Industrial fleet operators
+  are reportedly the first target market.
+
+  ARTICLE 3:
+  An open-source project called Bumblehive has released a small language
+  model that runs on a single laptop GPU yet performs comparably to
+  commercial chat models on retrieval-heavy benchmarks. The team
+  credits aggressive distillation and synthetic data.
+
+mixture_plan:
+  plan_id: multi-doc-summary
+  description: Summarize three articles in parallel
+  nodes:
+    - id: s1
+      depends_on: []
+      prompt: |
+        Summarize this article in one sentence focused on the key finding:
+
+        The James Webb Space Telescope has detected complex organic molecules
+        in the atmosphere of a distant exoplanet, raising fresh interest in
+        whether such compounds are widespread in planet formation. The signal
+        was confirmed across multiple observation windows.
+    - id: s2
+      depends_on: []
+      prompt: |
+        Summarize this article in one sentence focused on the key finding:
+
+        A new study from MIT shows that lithium-iron-phosphate batteries can
+        retain up to 92% of their capacity after 5,000 charge cycles when
+        paired with a redesigned cooling system. Industrial fleet operators
+        are reportedly the first target market.
+    - id: s3
+      depends_on: []
+      prompt: |
+        Summarize this article in one sentence focused on the key finding:
+
+        An open-source project called Bumblehive has released a small language
+        model that runs on a single laptop GPU yet performs comparably to
+        commercial chat models on retrieval-heavy benchmarks. The team credits
+        aggressive distillation and synthetic data.
+
+mixture_composer_prompt: |
+  You have three one-sentence summaries of three separate articles. Weave
+  them into a single coherent 4-5 sentence paragraph that flows naturally.
+  Do not list them; integrate them.
+
+  SUMMARY 1: {leaf:s1}
+  SUMMARY 2: {leaf:s2}
+  SUMMARY 3: {leaf:s3}
