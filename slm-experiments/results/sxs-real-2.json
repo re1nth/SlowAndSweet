@@ -1,0 +1,794 @@
+{
+  "run_id": "sxs-real-2",
+  "frontier": "anthropic:claude-sonnet-4-6",
+  "seed": 7,
+  "started_at": 1782495667.710827,
+  "finished_at": 1782495797.344193,
+  "wall_seconds": 129.6333668231964,
+  "case_count": 10,
+  "totals": {
+    "winners": {
+      "solo": 8,
+      "mixture": 1,
+      "tie": 1,
+      "skipped": 0
+    },
+    "solo": {
+      "frontier_input_tokens": 1073,
+      "frontier_output_tokens": 2327,
+      "wall_seconds": 56.12943959236145
+    },
+    "mixture": {
+      "frontier_input_tokens": 2800,
+      "frontier_output_tokens": 2293,
+      "slm_output_tokens": 1865,
+      "wall_seconds": 85.63170313835144
+    },
+    "reviewer": {
+      "input_tokens": 9022,
+      "output_tokens": 1728
+    }
+  },
+  "cases": [
+    {
+      "case_id": "multi-doc-summary",
+      "name": "Multi-document summarization",
+      "category": "summarization",
+      "solo": {
+        "arm": "solo",
+        "output": "Recent scientific and technological advances are expanding our understanding of both the cosmos and practical energy and computing systems. The James Webb Space Telescope has identified complex organic molecules in the atmosphere of a distant exoplanet, strengthening the possibility that such compounds may be a common feature of planetary formation across the universe. Closer to home, MIT researchers have demonstrated that lithium-iron-phosphate batteries paired with a redesigned cooling system can retain 92% of their capacity after 5,000 charge cycles, a breakthrough with immediate implications for industrial fleet operators seeking more durable energy storage. Meanwhile, an open-source project called Bumblehive has shown that cutting-edge AI capabilities need not require massive infrastructure, releasing a compact language model that runs on a single laptop GPU yet rivals commercial alternatives on retrieval-heavy benchmarks, thanks to aggressive distillation and synthetic training data. Together, these developments reflect a broader momentum across fields \u2014 from space exploration to clean energy to artificial intelligence \u2014 toward discoveries that are both scientifically significant and practically accessible.",
+        "frontier": {
+          "input_tokens": 227,
+          "output_tokens": 218,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 5.5476720333099365,
+          "total_tokens": 445
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 5.547717094421387,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "The boundaries of what we once considered rare or exceptional are being redrawn across multiple scientific and technological frontiers. In astronomy, the James Webb Space Telescope has detected complex organic molecules in the atmosphere of a distant exoplanet, a finding that suggests such chemical complexity may be far more widespread throughout the universe than scientists had previously assumed. Closer to home, advances in energy storage are similarly challenging old assumptions about practical limitations, as an MIT study demonstrates that lithium-iron-phosphate batteries equipped with an optimized cooling system can retain up to 92% of their capacity after 5,000 charging cycles \u2014 a breakthrough that positions them as a viable power source for demanding industrial fleet applications. Meanwhile, in the field of artificial intelligence, the open-source Bumblehive project has shown that through aggressive distillation and synthetic data techniques, a model running on a single laptop GPU can match the performance of commercial chat models on retrieval-heavy benchmarks. Together, these developments reflect a broader pattern in modern science and engineering: sophisticated capabilities once reserved for the largest instruments, infrastructure, and institutions are becoming increasingly accessible and ubiquitous.",
+        "frontier": {
+          "input_tokens": 193,
+          "output_tokens": 239,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 6.135225057601929,
+          "total_tokens": 432
+        },
+        "slm": {
+          "output_tokens": 119,
+          "input_tokens": null,
+          "nodes": 3,
+          "wall_seconds": 3.3416929244995117,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 9.667313814163208,
+        "error": null
+      },
+      "review": {
+        "winner": "solo",
+        "confidence": 0.65,
+        "scores": {
+          "mixture": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 4
+          },
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          }
+        },
+        "reasoning": "Both answers are accurate and complete, covering all three articles with no factual errors. Answer B is more concise and flows more naturally as a unified paragraph, while Answer A is slightly more verbose with a longer framing sentence and closing. B's structure is tighter and easier to read, giving it a slight edge on clarity.",
+        "reviewer_usage": {
+          "input_tokens": 1017,
+          "output_tokens": 159,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 4.3520050048828125
+        }
+      }
+    },
+    {
+      "case_id": "classify-reviews",
+      "name": "Batch sentiment classification",
+      "category": "classification",
+      "solo": {
+        "arm": "solo",
+        "output": "1. MIXED \u2014 Strong battery praise is undercut by clear dissatisfaction with the camera.\n2. POSITIVE \u2014 Enthusiastically endorses the laptop across multiple attributes with no complaints.\n3. NEGATIVE \u2014 Criticizes both the setup experience and the lack of customer support response.\n4. MIXED \u2014 Acknowledges acceptable value but expresses no real enthusiasm or serious complaints.\n5. NEGATIVE \u2014 A hardware defect (screen flickering) led the reviewer to return the product.",
+        "frontier": {
+          "input_tokens": 141,
+          "output_tokens": 110,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 3.684359312057495,
+          "total_tokens": 251
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 3.684389114379883,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "Here is the compiled and corrected list:\n\n1. **Mixed** \u2014 The reviewer notes both positive and negative aspects of the battery life and camera quality.\n2. **Positive** \u2014 The reviewer describes the product as fast, quiet, and having a great display, with no significant negatives mentioned; a \"Mixed\" label is not warranted.\n3. **Negative** \u2014 The reviewer describes a painful setup experience and unresponsive customer support; labeling this \"Mixed\" misrepresents a clearly negative review.\n4. **Mixed** \u2014 The reviewer balances positive and negative comments without strong enthusiasm or dissatisfaction.\n5. **Mixed** \u2014 The reviewer notes a negative issue (flickering) alongside a positive outcome (returning to the product after a week).",
+        "frontier": {
+          "input_tokens": 221,
+          "output_tokens": 167,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 4.421900033950806,
+          "total_tokens": 388
+        },
+        "slm": {
+          "output_tokens": 140,
+          "input_tokens": null,
+          "nodes": 5,
+          "wall_seconds": 1.8257129192352295,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 6.445199728012085,
+        "error": null
+      },
+      "review": {
+        "winner": "solo",
+        "confidence": 0.97,
+        "scores": {
+          "mixture": {
+            "accuracy": 2,
+            "completeness": 4,
+            "clarity": 3
+          },
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          }
+        },
+        "reasoning": "Answer A misclassifies review 5 as MIXED, incorrectly interpreting 'returned it after a week' as a positive, when returning a product due to a defect is clearly NEGATIVE. Answer B correctly labels all five reviews and provides concise, accurate justifications for each. Answer B is superior in accuracy, completeness, and clarity.",
+        "reviewer_usage": {
+          "input_tokens": 750,
+          "output_tokens": 163,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 3.8962650299072266
+        }
+      }
+    },
+    {
+      "case_id": "extract-entities",
+      "name": "Entity extraction from short bios",
+      "category": "extraction",
+      "solo": {
+        "arm": "solo",
+        "output": "```json\n[\n  {\n    \"name\": \"Dr. Lena Patel\",\n    \"role\": \"Head of Immunotherapy Research Group\",\n    \"organization\": \"Stanford Medical Center\",\n    \"location\": \"Palo Alto\"\n  },\n  {\n    \"name\": \"Marcus Greene\",\n    \"role\": \"Principal Engineer\",\n    \"organization\": \"NovaSky Robotics\",\n    \"location\": \"Berlin\"\n  },\n  {\n    \"name\": \"Aiko Yamada\",\n    \"role\": \"Head of Product\",\n    \"organization\": null,\n    \"location\": null\n  }\n]\n```\n\n**Notes on extraction decisions:**\n- **Bio 1:** \"Stanford Medical Center\" is treated as the organization; \"Palo Alto\" as the location (not \"Stanford University,\" which is not explicitly stated).\n- **Bio 2:** Location is derived from \"Berlin office,\" which is a clearly stated working location.\n- **Bio 3:** The organization is `null` because \"a small startup\" is not a named entity. Location is `null` despite the LinkedIn mention, as no actual location is provided.",
+        "frontier": {
+          "input_tokens": 133,
+          "output_tokens": 266,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 5.432358980178833,
+          "total_tokens": 399
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 5.432387113571167,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "```json\n[\n  {\n    \"name\": \"Dr. Lena Patel\",\n    \"role\": \"Immunotherapy Research Group Leader\",\n    \"organization\": null,\n    \"location\": \"Stanford Medical Center, Palo Alto\"\n  },\n  {\n    \"name\": \"Marcus Greene\",\n    \"role\": \"Principal Engineer\",\n    \"organization\": \"NovaSky Robotics\",\n    \"location\": null\n  },\n  {\n    \"name\": \"Aiko Yamada\",\n    \"role\": \"head of product\",\n    \"organization\": null,\n    \"location\": null\n  }\n]\n```",
+        "frontier": {
+          "input_tokens": 206,
+          "output_tokens": 153,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 2.570772886276245,
+          "total_tokens": 359
+        },
+        "slm": {
+          "output_tokens": 117,
+          "input_tokens": null,
+          "nodes": 3,
+          "wall_seconds": 1.5158929824829102,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 4.09181809425354,
+        "error": null
+      },
+      "review": {
+        "winner": "solo",
+        "confidence": 0.95,
+        "scores": {
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          },
+          "mixture": {
+            "accuracy": 2,
+            "completeness": 3,
+            "clarity": 4
+          }
+        },
+        "reasoning": "Answer B makes two clear errors: it sets organization to null for Bio 1 (Stanford Medical Center is explicitly named) and sets location to null for Bio 2 (Berlin is explicitly stated). Answer A correctly extracts all available named entities and uses null only where information is genuinely absent, with helpful notes explaining each decision.",
+        "reviewer_usage": {
+          "input_tokens": 885,
+          "output_tokens": 155,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 4.699857950210571
+        }
+      }
+    },
+    {
+      "case_id": "code-explain",
+      "name": "Code explanation (per-section then synthesize)",
+      "category": "code",
+      "solo": {
+        "arm": "solo",
+        "output": "## Explanation of `two_sum`\n\n**High-Level Purpose:**\nThis function searches a list of numbers (`nums`) for **two elements that add up to a given `target`**, returning the indices of those two elements if found, or `None` if no such pair exists.\n\n---\n\n**Block-by-Block Breakdown:**\n\n1. **Initialization (`seen = {}`):** A hash map (dictionary) is created to store numbers already encountered during iteration, mapping each number's *value* to its *index*. This acts as a memory of what has been seen so far.\n\n2. **Initial Pass (the `for` loop):** The function iterates through `nums` once, and for each element `n`, it calculates the `complement` \u2014 the value that would need to be paired with `n` to reach the `target` (i.e., `target - n`).\n\n3. **Hash Map Lookup (`if complement in seen`):** Before recording the current number, the function checks whether its required complement already exists in `seen`. If it does, a valid pair has been found, and the function **immediately returns** both indices \u2014 the complement's index (retrieved from the map) and the current index `i`.\n\n4. **Final Pass / No Match (`return None`):** If the loop completes without finding a matching pair, the function returns `None`, signaling that no valid two-sum combination exists in the list.\n\n---\n\n**Time & Space Complexity:**\n\n| Complexity | Value | Reason |\n|---|---|---|\n| Time | **O(n)** | The list is traversed only once; hash map lookups are O(1) average |\n| Space | **O(n)** | In the worst case, all elements are stored in the `seen` dictionary |\n\nThis is a significant improvement over a naive **O(n\u00b2)** brute-force approach that would use nested loops.",
+        "frontier": {
+          "input_tokens": 120,
+          "output_tokens": 424,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 9.163152933120728,
+          "total_tokens": 544
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 9.163174152374268,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "# Explanation of `two_sum`\n\nThe `two_sum` function efficiently identifies two numbers within a list that together sum to a given target value. Rather than relying on a slow, nested brute-force approach, it makes a single pass through the list while tracking previously visited numbers in a dictionary called `seen`. During each iteration of the for-loop, the function calculates the complement of the current number \u2014 that is, the value needed to reach the target \u2014 and checks whether that complement already exists in `seen`. If a match is found, the function immediately returns the indices of both numbers, since together they form the desired sum; otherwise, the current number and its index are recorded in `seen` for future comparisons. This strategy of looking backward through already-processed elements eliminates the need for a second nested loop entirely. As a result, both time and space complexity are O(n) in the worst case, meaning the function scales linearly with the size of the input list rather than quadratically.",
+        "frontier": {
+          "input_tokens": 190,
+          "output_tokens": 215,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 5.51157808303833,
+          "total_tokens": 405
+        },
+        "slm": {
+          "output_tokens": 120,
+          "input_tokens": null,
+          "nodes": 3,
+          "wall_seconds": 4.858632802963257,
+          "models_used": [
+            "qwen2.5:3b"
+          ]
+        },
+        "wall_seconds": 10.54743504524231,
+        "error": null
+      },
+      "review": {
+        "winner": "solo",
+        "confidence": 0.72,
+        "scores": {
+          "mixture": {
+            "accuracy": 5,
+            "completeness": 4,
+            "clarity": 5
+          },
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          }
+        },
+        "reasoning": "Both answers are accurate and well-written. Answer B more explicitly addresses each requested component (initial pass, hash map, final pass) as distinct labeled blocks, and includes a space complexity breakdown alongside time complexity. Answer A is slightly less complete in that it doesn't separately call out the 'final pass' (return None) block, though it is more concise and flows naturally as prose.",
+        "reviewer_usage": {
+          "input_tokens": 1092,
+          "output_tokens": 172,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 4.4016618728637695
+        }
+      }
+    },
+    {
+      "case_id": "math-multistep",
+      "name": "Multi-step word problem",
+      "category": "math",
+      "solo": {
+        "arm": "solo",
+        "output": "## Step-by-Step Solution\n\n**Revenue from sales**\n312 novels \u00d7 $14 = $4,368\n\n**Cost of novels purchased**\n400 novels \u00d7 $7.50 = $3,000\n\n**Refund from damaged returns**\n18 novels \u00d7 $7.50 = $135\n\n**Net cost of novels**\n$3,000 \u2212 $135 = $2,865\n\n**Shipping fee**\n$1,200 (fixed, one-time)\n\n**Total costs**\n$2,865 + $1,200 = $4,065\n\n**Net Profit**\n$4,368 \u2212 $4,065 = **$303**\n\n---\n\n$303",
+        "frontier": {
+          "input_tokens": 110,
+          "output_tokens": 164,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 3.3965489864349365,
+          "total_tokens": 274
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 3.3965811729431152,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "## Step-by-Step Solution\n\n**Note:** The extracted facts show `cost_per_novel: 75`, but the word problem states **$7.50**, so I'll use **$7.50** (the extracted value appears to be in cents or a data entry error).\n\n---\n\n### Step 1: Cost of Goods Purchased\n- 400 novels \u00d7 $7.50 = **$3,000.00**\n\n### Step 2: Refund from Returned Novels\n- 18 returned \u00d7 $7.50 = **$135.00** (refund received)\n\n### Step 3: Net Cost of Goods\n- $3,000.00 \u2212 $135.00 = **$2,865.00**\n\n### Step 4: Total Costs (including shipping)\n- $2,865.00 + $1,200.00 (shipping) = **$4,065.00**\n\n### Step 5: Gross Revenue (from sales)\n- 312 novels sold \u00d7 $14.00 = **$4,368.00**\n\n### Step 6: Net Profit\n- $4,368.00 \u2212 $4,065.00 = **$303.00**\n\n---\n\n**$303.00**",
+        "frontier": {
+          "input_tokens": 272,
+          "output_tokens": 291,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 5.56109094619751,
+          "total_tokens": 563
+        },
+        "slm": {
+          "output_tokens": 136,
+          "input_tokens": null,
+          "nodes": 2,
+          "wall_seconds": 2.1259539127349854,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 8.088881254196167,
+        "error": null
+      },
+      "review": {
+        "winner": "solo",
+        "confidence": 0.6,
+        "scores": {
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          },
+          "mixture": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 4
+          }
+        },
+        "reasoning": "Both answers arrive at the correct answer of $303 with identical calculations. Answer B includes an unnecessary and confusing note about 'extracted facts' and a 'cost_per_novel: 75' that has no basis in the prompt, which slightly reduces clarity. Answer A is cleaner and more concise without any extraneous content.",
+        "reviewer_usage": {
+          "input_tokens": 898,
+          "output_tokens": 159,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 3.6860928535461426
+        }
+      }
+    },
+    {
+      "case_id": "translate-batch",
+      "name": "Translate three sentences in parallel",
+      "category": "translation",
+      "solo": {
+        "arm": "solo",
+        "output": "Spanish: El clima es inusualmente c\u00e1lido para esta \u00e9poca del a\u00f1o y los jardines est\u00e1n floreciendo temprano.\nFrench: Le temps est inhabituellement chaud pour cette p\u00e9riode de l'ann\u00e9e et les jardins fleurissent t\u00f4t.\nGerman: Das Wetter ist ungew\u00f6hnlich warm f\u00fcr diese Jahreszeit und die G\u00e4rten bl\u00fchen fr\u00fch.",
+        "frontier": {
+          "input_tokens": 70,
+          "output_tokens": 92,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 2.261897087097168,
+          "total_tokens": 162
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 2.261924982070923,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "Spanish: El clima es de extraordinario calor para este periodo y los jardines se encuentran abriendo temprano.\nFrench: Il fait extr\u00eamement chaud pour cette p\u00e9riode de l'ann\u00e9e et les jardins s'\u00e9panouissent t\u00f4t.\nGerman: Das Wetter ist ungew\u00f6hnlich warm f\u00fcr diese Jahreszeit und die G\u00e4rten beginnen fr\u00fch aufzubl\u00fchen.",
+        "frontier": {
+          "input_tokens": 168,
+          "output_tokens": 99,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 2.887493133544922,
+          "total_tokens": 267
+        },
+        "slm": {
+          "output_tokens": 114,
+          "input_tokens": null,
+          "nodes": 3,
+          "wall_seconds": 1.8357961177825928,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 4.917370080947876,
+        "error": null
+      },
+      "review": {
+        "winner": "solo",
+        "confidence": 0.82,
+        "scores": {
+          "mixture": {
+            "accuracy": 3,
+            "completeness": 5,
+            "clarity": 4
+          },
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          }
+        },
+        "reasoning": "Answer B provides more accurate and natural translations across all three languages. Answer A has issues: the Spanish uses 'de extraordinario calor' (awkward phrasing) and omits 'del a\u00f1o' (of the year), while the French uses 'extr\u00eamement' (extremely) instead of 'inhabituellement' (unusually), changing the meaning. Answer B faithfully preserves 'unusually' in all three languages and uses idiomatic phrasing throughout.",
+        "reviewer_usage": {
+          "input_tokens": 594,
+          "output_tokens": 192,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 4.195362091064453
+        }
+      }
+    },
+    {
+      "case_id": "brainstorm-ideas",
+      "name": "Diversified brainstorm then curate",
+      "category": "brainstorming",
+      "solo": {
+        "arm": "solo",
+        "output": "Here are 5 concrete ideas for attracting remote workers on weekday afternoons:\n\n1. **Offer a \"Work Pass\"** \u2014 Sell a $15/day or $50/week pass that includes unlimited drip coffee and a guaranteed power outlet seat, bookable online in advance.\n\n2. **Host a weekly \"Co-Working Wednesday\"** \u2014 Dedicate every Wednesday afternoon to a structured co-working session with name tags, a brief intro round, and background lo-fi music to build a regular community.\n\n3. **Create a \"Focus Menu\"** \u2014 Offer afternoon-only bundles pairing a drink and snack (e.g., cold brew + energy bar) at a slight discount to reward customers who stay and order consistently.\n\n4. **Install a public monitor displaying local Wi-Fi speed** \u2014 Post the real-time speed test result near the entrance so remote workers can immediately trust the connection before committing to staying.\n\n5. **Partner with one local employer or coworking space** \u2014 Offer their members a 20% discount card, giving the shop a built-in referral pipeline of people already looking for off-site work spots.",
+        "frontier": {
+          "input_tokens": 49,
+          "output_tokens": 254,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 6.860608816146851,
+          "total_tokens": 303
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 6.860636234283447,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "Here are the 5 strongest, deduplicated ideas rewritten as crisp actionable sentences:\n\n1. **Dedicated Work-Friendly Space:** Outfit a designated lounge area with plush seating, ambient lighting, fast Wi-Fi, and ample power outlets to create a comfortable, productivity-focused environment for remote workers.\n\n2. **Weekday Afternoon Happy Hour:** Launch a recurring \"Work Hours\" promotion offering discounted drinks and free pastries between 2\u20134 pm on weekdays to consistently draw remote workers during slow afternoon periods.\n\n3. **Loyalty Rewards Program:** Introduce a punch-card or app-based loyalty program that gives remote workers a free drink after every five weekday afternoon visits to incentivize repeat business.\n\n4. **Skills-Based Workshops:** Host monthly in-shop workshops on topics relevant to remote workers\u2014such as time management, digital marketing, or cybersecurity\u2014to position the caf\u00e9 as a professional hub, not just a place to drink coffee.\n\n5. **Local Business Speaker Series:** Partner with nearby businesses and thought leaders to run a quarterly guest speaker event series, giving remote workers valuable networking and learning opportunities while driving foot traffic to the shop.",
+        "frontier": {
+          "input_tokens": 569,
+          "output_tokens": 260,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 7.177534103393555,
+          "total_tokens": 829
+        },
+        "slm": {
+          "output_tokens": 453,
+          "input_tokens": null,
+          "nodes": 3,
+          "wall_seconds": 5.156248092651367,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 12.715466976165771,
+        "error": null
+      },
+      "review": {
+        "winner": "solo",
+        "confidence": 0.72,
+        "scores": {
+          "mixture": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 4
+          },
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          }
+        },
+        "reasoning": "Both answers are accurate and fully address the prompt with 5 distinct, actionable ideas. Answer B edges out A on clarity and specificity\u2014its ideas are more concrete and immediately actionable (e.g., specific pricing, a named weekly event, a real-time Wi-Fi display), whereas A's ideas like 'quarterly speaker series' and 'monthly workshops' are less tightly focused on the weekday afternoon draw. B also avoids the unnecessary preamble about 'deduplicated ideas.'",
+        "reviewer_usage": {
+          "input_tokens": 896,
+          "output_tokens": 200,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 4.791486978530884
+        }
+      }
+    },
+    {
+      "case_id": "fact-recall",
+      "name": "Multi-subject fact recall",
+      "category": "fact-recall",
+      "solo": {
+        "arm": "solo",
+        "output": "Q1: The chemical symbol for tungsten is W.\nQ2: \"The Persistence of Memory\" was painted by Salvador Dal\u00ed.\nQ3: The Apollo 11 crew first landed on the Moon in 1969.",
+        "frontier": {
+          "input_tokens": 89,
+          "output_tokens": 54,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 1.5386030673980713,
+          "total_tokens": 143
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 1.538625955581665,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "Q1: The chemical symbol for tungsten is W.\nQ2: \"The Persistence of Memory\" was painted by Salvador Dal\u00ed.\nQ3: The Moon landing occurred on July 20, 1969.",
+        "frontier": {
+          "input_tokens": 117,
+          "output_tokens": 51,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 1.8583669662475586,
+          "total_tokens": 168
+        },
+        "slm": {
+          "output_tokens": 37,
+          "input_tokens": null,
+          "nodes": 3,
+          "wall_seconds": 0.6073942184448242,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 2.8714330196380615,
+        "error": null
+      },
+      "review": {
+        "winner": "tie",
+        "confidence": 0.95,
+        "scores": {
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          },
+          "mixture": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          }
+        },
+        "reasoning": "Both answers are factually correct, follow the required format exactly, and are equally clear. The only difference is B adds the specific date 'July 20' in Q3, which is accurate but neither adds nor detracts meaningfully from the response quality.",
+        "reviewer_usage": {
+          "input_tokens": 527,
+          "output_tokens": 141,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 3.400101900100708
+        }
+      }
+    },
+    {
+      "case_id": "plan-steps",
+      "name": "Step-by-step plan synthesis",
+      "category": "planning",
+      "solo": {
+        "arm": "solo",
+        "output": "# Home Vegetable Garden Setup Plan for Beginners\n\n1. **Choose your garden location** by selecting a spot in your yard that receives at least 6\u20138 hours of direct sunlight per day and has reasonably level ground.\n\n2. **Decide on your garden size** by starting small \u2014 a 4\u00d78 foot raised bed or a 10\u00d710 foot in-ground plot is manageable for a first-time gardener.\n\n3. **Test and prepare your soil** using an inexpensive home soil test kit from a garden center to check pH and nutrient levels, then amend the soil with compost as needed.\n\n4. **Clear the area** by removing all grass, weeds, and debris from your chosen plot, digging down about 12 inches to loosen the existing soil.\n\n5. **Build or define your bed** by constructing a simple raised bed frame with untreated lumber or marking your in-ground plot with stakes and string.\n\n6. **Fill or enrich the bed** with a mix of topsoil, compost, and a balanced slow-release fertilizer to give your plants a strong nutritional foundation.\n\n7. **Select beginner-friendly vegetables** such as lettuce, radishes, green beans, zucchini, and tomatoes, choosing varieties labeled \"easy to grow\" on the seed packet.\n\n8. **Plant seeds or seedlings** according to the spacing and depth instructions on each seed packet, and water gently immediately after planting.\n\n9. **Set up a simple watering routine** by watering at the base of plants in the morning, aiming for about 1 inch of water per week through rain or manual watering.\n\n10. **Label your rows and track your progress** by placing plant markers at each row and keeping a simple notebook to record planting dates, observations, and what works well.",
+        "frontier": {
+          "input_tokens": 57,
+          "output_tokens": 411,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 9.032169103622437,
+          "total_tokens": 468
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 9.032195806503296,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "# Beginner's Guide to Starting a Home Vegetable Garden in Early Spring\n\n1. **Choose your garden location.** Select a spot in your yard that receives at least six to eight hours of direct sunlight daily, as most vegetables need plenty of sun to thrive.\n\n2. **Decide on your garden size and layout.** For beginners, start small with a raised bed or a simple in-ground plot of about 4x8 feet, which is manageable and easy to maintain without feeling overwhelmed.\n\n3. **Test your soil's pH and nutrient levels.** Use a home testing kit to check that your soil falls within the ideal range of 6.0 to 7.0 for most vegetables, and identify any nutrient deficiencies that need to be corrected before planting.\n\n4. **Prepare and amend your soil.** Work compost or well-rotted manure into the top 8 to 12 inches of soil to improve drainage, water retention, and structure, while also introducing beneficial microorganisms that support healthy root development.\n\n5. **Address specific soil problems if needed.** If your soil is heavy clay, mix in perlite or peat moss to improve aeration and drainage; if it is sandy, add extra compost to help retain moisture and nutrients.\n\n6. **Select your early spring crops.** Choose cool-season vegetables such as broccoli, spinach, kale, lettuce, or peas, as these thrive in the cooler temperatures of early spring and can even tolerate a light frost.\n\n7. **Plant your seeds or seedlings with proper spacing.** Follow the spacing guidelines on seed packets or plant labels to give each plant enough room for healthy growth and good air circulation, which helps prevent disease.\n\n8. **Set up an efficient watering system.** Install a drip irrigation system or soaker hose to deliver water directly to the roots, minimizing evaporation and reducing the risk of overwatering, which can cause root rot.\n\n9. **Apply mulch around your plants.** Spread a 2 to 3 inch layer of straw, wood chips, or shredded leaves around your plants to retain soil moisture, regulate soil temperature, and suppress weed growth.\n\n10. **Monitor and maintain your garden regularly.** Check your plants every few days for signs of pests, disease, or nutrient deficiencies, and continue to water consistently so the soil stays moist but never waterlogged.",
+        "frontier": {
+          "input_tokens": 436,
+          "output_tokens": 544,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 10.898182153701782,
+          "total_tokens": 980
+        },
+        "slm": {
+          "output_tokens": 304,
+          "input_tokens": null,
+          "nodes": 2,
+          "wall_seconds": 3.648419141769409,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 14.923882007598877,
+        "error": null
+      },
+      "review": {
+        "winner": "mixture",
+        "confidence": 0.72,
+        "scores": {
+          "mixture": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          },
+          "solo": {
+            "accuracy": 4,
+            "completeness": 4,
+            "clarity": 5
+          }
+        },
+        "reasoning": "Answer A is more accurate for an early spring context, specifically recommending cool-season crops (broccoli, spinach, kale, peas) suited to that season, whereas Answer B suggests tomatoes, zucchini, and green beans which are warm-season crops not appropriate for early spring planting. Answer A also provides more actionable detail in each step (specific soil pH ranges, mulch depths, irrigation methods). Both answers are well-structured and clear, but A's seasonal accuracy and depth give it the edge.",
+        "reviewer_usage": {
+          "input_tokens": 1345,
+          "output_tokens": 203,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 4.712836027145386
+        }
+      }
+    },
+    {
+      "case_id": "compare-contrast",
+      "name": "Compare and contrast",
+      "category": "analysis",
+      "solo": {
+        "arm": "solo",
+        "output": "# Electric Scooters vs. Electric Bicycles for Urban Commuting\n\nBoth electric scooters and electric bicycles have surged in popularity as last-mile urban commuting solutions, each offering distinct trade-offs depending on a rider's needs and city environment.\n\n**Range:** Most electric scooters deliver 15\u201330 miles per charge, while e-bikes typically offer 20\u201360 miles, making e-bikes the stronger choice for longer commutes or hilly terrain where the motor works harder.\n\n**Regulation:** In most US cities, e-bikes are classified under a three-tier federal system (Class 1\u20133) and are generally permitted on bike lanes and paths with minimal licensing requirements, whereas electric scooters face more fragmented rules \u2014 often restricted from sidewalks and bike lanes, requiring riders to use the road or designated scooter zones depending on the municipality.\n\n**Effort:** E-bikes require active pedaling, with the motor providing assistance rather than full propulsion, which means riders get light exercise and maintain better control on varied terrain; scooters demand almost no physical effort, as riders simply stand and throttle, which suits short hops but can feel unstable at higher speeds or on uneven pavement.\n\n**Storage:** Scooters are lighter and more compact, making them easier to fold and carry into an office or apartment, while e-bikes \u2014 even foldable models \u2014 are heavier and bulkier, typically requiring a dedicated rack, secure outdoor parking, or a freight elevator to bring indoors.",
+        "frontier": {
+          "input_tokens": 77,
+          "output_tokens": 334,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 9.21176815032959,
+          "total_tokens": 411
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 9.2118079662323,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "# Electric Scooters vs. E-Bikes: Urban Commuting Compared\n\nBoth electric scooters and e-bikes offer eco-friendly alternatives to cars for city travel, but they differ meaningfully across several practical dimensions.\n\n**Range**\nE-bikes hold a clear advantage here, covering up to 20 miles per charge compared to the modest 1\u20133 miles typical of e-scooters, making them far better suited for longer or less predictable commutes.\n\n**Regulation**\nE-bikes generally face more consistent rules across U.S. cities, with a widely accepted 20 mph speed limit, while e-scooter regulations remain fragmented and sometimes restrictive, requiring riders to stay closely informed about local laws.\n\n**Effort**\nNeither option demands much physical exertion, but e-bikes edge ahead by offering motor-assisted pedaling that smooths out hills and heavy loads, whereas scooters require riders to stand and balance, which can be tiring over time.\n\n**Storage**\nBoth vehicles can be secured in designated urban parking spots, though e-scooters have a slight edge in flexibility due to their smaller footprint, while e-bikes typically rely on standard bike locks and racks found throughout most cities.",
+        "frontier": {
+          "input_tokens": 428,
+          "output_tokens": 274,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 7.3314049243927,
+          "total_tokens": 702
+        },
+        "slm": {
+          "output_tokens": 325,
+          "input_tokens": null,
+          "nodes": 2,
+          "wall_seconds": 3.6409668922424316,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 11.362903118133545,
+        "error": null
+      },
+      "review": {
+        "winner": "solo",
+        "confidence": 0.92,
+        "scores": {
+          "mixture": {
+            "accuracy": 2,
+            "completeness": 4,
+            "clarity": 5
+          },
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          }
+        },
+        "reasoning": "Answer A contains a significant factual error, stating e-scooters have a range of only 1\u20133 miles when typical electric scooters achieve 15\u201330 miles per charge. Answer B provides accurate range figures for both vehicles and more precise regulatory details about the federal three-tier e-bike classification system. Both answers are well-structured and clear, but B's factual accuracy and greater depth make it the clear winner.",
+        "reviewer_usage": {
+          "input_tokens": 1018,
+          "output_tokens": 184,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 4.507587909698486
+        }
+      }
+    }
+  ]
+}

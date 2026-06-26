@@ -30,7 +30,7 @@ class SLMQueueAdapter:
         self.base_url = base_url.rstrip("/")
 
     def submit(self, plan: dict) -> str:
-        body = json.dumps(plan).encode("utf-8")
+        body = json.dumps({"plan": plan}).encode("utf-8")
         req = urllib.request.Request(
             f"{self.base_url}/plans",
             data=body,

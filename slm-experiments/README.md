@@ -119,6 +119,33 @@ Claude comparison; treat this as smoke-test mode only.
   reviewer's JSON output couldn't be parsed; the raw text is preserved
   in `review.reasoning`. Usually means `max_tokens` was too low.
 
+## Baseline results
+
+First real run: [`results/sxs-real-2.md`](results/sxs-real-2.md) (and
+the corresponding `.json` snapshot). Frontier was
+`claude-sonnet-4-6`; reviewer the same. Headline:
+
+| Arm     | Frontier in | Frontier out | SLM out | Σ arm time |
+| ------- | ----------: | -----------: | ------: | ---------: |
+| solo    | 1,073       | 2,327        | —       | 56.1s      |
+| mixture | 2,800       | 2,293        | 1,865   | 85.6s      |
+| reviewer | 9,022      | 1,728        | —       | —          |
+
+- Cases: 10. **Solo won 8, mixture won 1 (`plan-steps`), tie 1
+  (`fact-recall`).** Wall clock for the full run: 129.6s.
+- On this case set the mixture pattern costs ~50% **more** frontier
+  tokens than solo, because the composer prompt has to swallow every
+  leaf result. The harness's job is to surface that.
+- Where mixture wins is informative: in `plan-steps`, SLM-gathered
+  tips *constrained* the composer toward the right answer (cool-season
+  crops for early spring). Where mixture loses, the leaves were
+  *replacing* judgment the frontier should have done itself
+  (classification, extraction, fact-sensitive translation).
+
+This is one snapshot, not a verdict on the pattern — re-run with
+different cases, models, or prompts and the numbers move. The point is
+the harness now produces evidence rather than vibes.
+
 ## Case schema
 
 Each case is a YAML doc:
