@@ -1,0 +1,4 @@
+# prism reuses slm-experiments's adapters, which already pull in
+# anthropic + PyYAML. Install slm-experiments/requirements.txt and
+# you have everything prism needs too.
+-r ../slm-experiments/requirements.txt

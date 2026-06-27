@@ -45,3 +45,41 @@ mixture_composer_prompt: |
   SPACE: {leaf:angle_space}
   PROMO: {leaf:angle_promo}
   COMMUNITY: {leaf:angle_community}
+
+prism_plan:
+  plan_id: brainstorm-ideas
+  description: SLMs diverge (cheap diversity), LLM converges (judgment)
+  nodes:
+    - id: angle_space
+      type: summarize
+      depends_on: []
+      prompt: |
+        Brainstorm 4 ideas a small coffee shop could try to draw remote
+        workers in weekday afternoons, focusing on PHYSICAL SPACE and
+        amenities (seating, outlets, lighting, noise). One sentence each,
+        concrete.
+    - id: angle_promo
+      type: summarize
+      depends_on: []
+      prompt: |
+        Brainstorm 4 ideas a small coffee shop could try to draw remote
+        workers in weekday afternoons, focusing on PRICING AND PROMOTIONS
+        (offers, packages, memberships). One sentence each, concrete.
+    - id: angle_community
+      type: summarize
+      depends_on: []
+      prompt: |
+        Brainstorm 4 ideas a small coffee shop could try to draw remote
+        workers in weekday afternoons, focusing on COMMUNITY AND EVENTS
+        (meetups, partnerships, social). One sentence each, concrete.
+    - id: compose
+      type: judge
+      depends_on: [angle_space, angle_promo, angle_community]
+      prompt: |
+        Select the 5 strongest ideas overall from these three brainstorm
+        sets, dedupe near-duplicates, and rewrite each as one crisp
+        actionable sentence. Return them as a numbered list 1-5.
+
+        SPACE: {{angle_space.result}}
+        PROMO: {{angle_promo.result}}
+        COMMUNITY: {{angle_community.result}}

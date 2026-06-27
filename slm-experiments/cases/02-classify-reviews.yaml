@@ -71,3 +71,67 @@ mixture_composer_prompt: |
   3: {leaf:r3}
   4: {leaf:r4}
   5: {leaf:r5}
+
+prism_plan:
+  plan_id: classify-reviews
+  description: Classifications go to LLM (accuracy critical); formatting to SLM
+  nodes:
+    - id: r1
+      backend: llm
+      type: classify
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "Battery lasts two full days, but the camera is a real disappointment."
+    - id: r2
+      backend: llm
+      type: classify
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "Honestly the best laptop I've ever used. Fast, quiet, great display."
+    - id: r3
+      backend: llm
+      type: classify
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "Setup was painful and customer support never responded."
+    - id: r4
+      backend: llm
+      type: classify
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "Decent for the price. Nothing exciting, nothing terrible."
+    - id: r5
+      backend: llm
+      type: classify
+      depends_on: []
+      prompt: |
+        Classify this product review as POSITIVE, NEGATIVE, or MIXED, then
+        give a one-line justification. Format: `LABEL — justification`.
+
+        Review: "I returned it after a week — the screen flickers constantly."
+    - id: compose
+      backend: slm
+      type: format
+      depends_on: [r1, r2, r3, r4, r5]
+      prompt: |
+        Compile these five labeled classifications into a clean numbered
+        list. Each line: `<n>. <LABEL> — <justification>`. Output the
+        list only.
+
+        1: {{r1.result}}
+        2: {{r2.result}}
+        3: {{r3.result}}
+        4: {{r4.result}}
+        5: {{r5.result}}

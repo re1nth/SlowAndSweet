@@ -1,0 +1,147 @@
+{
+  "run_id": "prism-smoke",
+  "frontier": "anthropic:claude-sonnet-4-6",
+  "seed": 7,
+  "started_at": 1782583247.3182049,
+  "finished_at": 1782583259.964849,
+  "wall_seconds": 12.646644115447998,
+  "case_count": 1,
+  "totals": {
+    "winners": {
+      "solo": 1,
+      "mixture": 0,
+      "prism": 0,
+      "tie": 0,
+      "skipped": 0
+    },
+    "solo": {
+      "frontier_input_tokens": 227,
+      "frontier_output_tokens": 199,
+      "slm_output_tokens": 0,
+      "wall_seconds": 5.190057992935181
+    },
+    "mixture": {
+      "frontier_input_tokens": 193,
+      "frontier_output_tokens": 242,
+      "slm_output_tokens": 119,
+      "wall_seconds": 8.548869132995605
+    },
+    "prism": {
+      "frontier_input_tokens": 181,
+      "frontier_output_tokens": 226,
+      "slm_output_tokens": 119,
+      "wall_seconds": 8.741712093353271
+    },
+    "reviewer": {
+      "input_tokens": 1197,
+      "output_tokens": 182
+    }
+  },
+  "cases": [
+    {
+      "case_id": "multi-doc-summary",
+      "name": "Multi-document summarization",
+      "category": "summarization",
+      "review": {
+        "winner": "solo",
+        "confidence": 0.55,
+        "scores": {
+          "prism": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 4
+          },
+          "solo": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 5
+          },
+          "mixture": {
+            "accuracy": 5,
+            "completeness": 5,
+            "clarity": 4
+          }
+        },
+        "reasoning": "All three answers are accurate and complete, covering all three articles faithfully. Answer B is slightly more concise and flows more naturally without the somewhat overwrought framing of A and C, making it the clearest and most readable of the three. The differences are minor, but B's tighter prose edges it ahead.",
+        "reviewer_usage": {
+          "input_tokens": 1197,
+          "output_tokens": 182,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 3.8993778228759766
+        }
+      },
+      "solo": {
+        "arm": "solo",
+        "output": "Recent scientific and engineering advances are expanding what seems possible across several fields. The James Webb Space Telescope has identified complex organic molecules in a distant exoplanet's atmosphere, strengthening the case that such compounds may be a common feature of planetary formation throughout the universe. Meanwhile, on Earth, MIT researchers have demonstrated that lithium-iron-phosphate batteries paired with a redesigned cooling system can retain 92% of their capacity after 5,000 charge cycles, a breakthrough that industrial fleet operators are poised to adopt first. In the world of artificial intelligence, the open-source Bumblehive project has shown that a small language model running on a single laptop GPU can match commercial chat models on retrieval-heavy benchmarks, thanks to aggressive distillation and synthetic data training. Together, these developments reflect a broader momentum in which sophisticated capabilities \u2014 whether in space observation, energy storage, or AI \u2014 are becoming more accessible and far-reaching.",
+        "frontier": {
+          "input_tokens": 227,
+          "output_tokens": 199,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 5.190030813217163,
+          "total_tokens": 426
+        },
+        "slm": {
+          "output_tokens": 0,
+          "input_tokens": null,
+          "nodes": 0,
+          "wall_seconds": 0.0,
+          "models_used": []
+        },
+        "wall_seconds": 5.190057992935181,
+        "error": null
+      },
+      "mixture": {
+        "arm": "mixture",
+        "output": "The boundaries of what we once considered rare or exceptional are being redrawn across multiple scientific and technological frontiers. In astronomy, the James Webb Space Telescope has detected complex organic molecules in the atmosphere of a distant exoplanet, a finding that suggests such chemical complexity may be far more widespread throughout the universe than scientists had previously assumed. Closer to home, advances in efficiency and longevity are reshaping practical technology as well: MIT researchers have demonstrated that lithium-iron-phosphate batteries, when paired with an optimized cooling system, can retain up to 92% of their capacity after 5,000 charging cycles, a breakthrough that positions them as a reliable power source for demanding industrial fleet applications. Meanwhile, in the field of artificial intelligence, the open-source Bumblehive project has shown that through aggressive distillation and synthetic data techniques, a capable language model can run on a single laptop GPU while matching commercial chat models on retrieval-heavy benchmarks. Together, these developments reflect a broader trend in which sophisticated capabilities \u2014 whether in deep space chemistry, energy storage, or machine intelligence \u2014 are becoming increasingly accessible and unexpectedly prevalent.",
+        "frontier": {
+          "input_tokens": 193,
+          "output_tokens": 242,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 6.513176918029785,
+          "total_tokens": 435
+        },
+        "slm": {
+          "output_tokens": 119,
+          "input_tokens": null,
+          "nodes": 3,
+          "wall_seconds": 1.8390588760375977,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 8.548869132995605,
+        "error": null
+      },
+      "prism": {
+        "arm": "prism",
+        "output": "Recent advances across science and technology are reshaping our understanding of what is possible at every scale. In space, the James Webb Space Telescope has detected complex organic molecules in the atmosphere of a distant exoplanet, a finding that suggests such chemical building blocks may be far more widespread throughout the universe than scientists previously believed. Closer to home, researchers at MIT have demonstrated that lithium-iron-phosphate batteries, when paired with an optimized cooling system, can retain up to 92% of their capacity after 5,000 charging cycles, a breakthrough that positions them as a reliable power source for demanding industrial fleet applications. Meanwhile, on the software side, the Bumblehive project has shown that cutting-edge AI need not require massive infrastructure, having developed an open-source model that runs efficiently on a single laptop GPU and rivals commercial chat models on retrieval-heavy benchmarks through aggressive distillation and synthetic data techniques. Together, these developments reflect a broader trend of innovation making the extraordinary increasingly accessible, whether in the cosmos, the factory floor, or the personal computer.",
+        "frontier": {
+          "input_tokens": 181,
+          "output_tokens": 226,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 0,
+          "calls": 1,
+          "wall_seconds": 5.6321611404418945,
+          "total_tokens": 407
+        },
+        "slm": {
+          "output_tokens": 119,
+          "input_tokens": null,
+          "nodes": 3,
+          "wall_seconds": 8.004451036453247,
+          "models_used": [
+            "smollm2:1.7b"
+          ]
+        },
+        "wall_seconds": 8.741712093353271,
+        "error": null
+      }
+    }
+  ]
+}

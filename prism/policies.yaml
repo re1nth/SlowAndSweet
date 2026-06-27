@@ -1,0 +1,73 @@
+# prism routing taxonomy.
+#
+# Each task `type` maps to a backend:
+#   - slm:  cheap, mechanical work — local pool can do it well.
+#   - llm:  judgment, multi-step reasoning, accuracy-sensitive work.
+#
+# The classifier picks one of these types for an unannotated node. If
+# the classifier returns a type not in this list, prism treats the node
+# as `unknown` and routes it to `llm` for safety (default_unknown).
+#
+# Keep the type vocabulary small (~12 entries) — bigger taxonomies make
+# the classifier worse, not better.
+
+default_unknown: llm
+
+types:
+  # ---- SLM-eligible -------------------------------------------------
+  summarize:
+    backend: slm
+    description: "Compress text into a shorter form. Faithful to the source."
+
+  extract:
+    backend: slm
+    description: "Pull named fields, JSON, or entities out of text. Structure-preserving."
+
+  classify:
+    backend: slm
+    description: "Apply a fixed label set (sentiment, intent, category) to an input."
+
+  translate:
+    backend: slm
+    description: "Render text from one language to another with no creative liberty."
+
+  format:
+    backend: slm
+    description: "Reshape input into a target template (table, list, JSON). No new content."
+
+  bash-command:
+    backend: slm
+    description: "Generate a one-shot bash command from a templated description."
+
+  git-command:
+    backend: slm
+    description: "Generate a git command from a templated description."
+
+  fact-list:
+    backend: slm
+    description: "Enumerate well-known facts on a single named subject. Short list."
+
+  # ---- LLM-only -----------------------------------------------------
+  design:
+    backend: llm
+    description: "Propose architecture, schema, or interface choices with tradeoffs."
+
+  debug:
+    backend: llm
+    description: "Diagnose a failure given context. Requires hypothesis + evidence."
+
+  multi-step-reason:
+    backend: llm
+    description: "Chain of dependent steps with arithmetic, constraints, or proofs."
+
+  judge:
+    backend: llm
+    description: "Pick between options against a rubric, or critique a draft."
+
+  compose:
+    backend: llm
+    description: "Synthesize a final answer from upstream node results."
+
+  security-analyze:
+    backend: llm
+    description: "Reason about adversarial behavior, threat models, or policy violations."

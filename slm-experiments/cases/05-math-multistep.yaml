@@ -50,3 +50,43 @@ mixture_composer_prompt: |
 
   EXTRACTED FACTS: {leaf:facts}
   DEFINITIONS: {leaf:terms}
+
+prism_plan:
+  plan_id: math-multistep
+  description: SLM extracts numbers + defines terms; LLM does the multi-step reasoning
+  nodes:
+    - id: facts
+      type: extract
+      backend: slm
+      depends_on: []
+      prompt: |
+        Extract a JSON object with the numerical facts in this word
+        problem. Use keys: cost_per_novel, sell_per_novel, shipping_fee,
+        shipment_size, sold, returned. Return JSON only.
+
+        Word problem: A bookstore buys novels for $7.50 each and sells
+        them for $14. They paid a fixed $1,200 shipping fee on a single
+        shipment of 400 novels. By end of month they had sold 312 novels
+        and returned 18 damaged ones to the supplier (full refund).
+    - id: terms
+      type: fact-list
+      depends_on: []
+      prompt: |
+        In one sentence each, define these terms for a small-business
+        accounting context: cost of goods sold, gross revenue, net profit.
+    - id: compose
+      type: multi-step-reason
+      depends_on: [facts, terms]
+      prompt: |
+        Solve this multi-step word problem using the extracted facts and
+        brief definitions below. Show your steps briefly, then give the
+        final number on its own line.
+
+        Word problem: A bookstore buys novels for $7.50 each and sells them
+        for $14. They paid a fixed $1,200 shipping fee on a single shipment
+        of 400 novels. By end of month they had sold 312 novels and returned
+        18 damaged ones to the supplier (full refund). What is the
+        bookstore's net profit on this shipment so far?
+
+        EXTRACTED FACTS: {{facts.result}}
+        DEFINITIONS: {{terms.result}}

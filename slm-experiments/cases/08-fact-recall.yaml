@@ -45,3 +45,40 @@ mixture_composer_prompt: |
   Q1 raw: {leaf:q1}
   Q2 raw: {leaf:q2}
   Q3 raw: {leaf:q3}
+
+prism_plan:
+  plan_id: fact-recall
+  description: Facts go to LLM (recall accuracy); SLM formats
+  nodes:
+    - id: q1
+      backend: llm
+      type: fact-list
+      depends_on: []
+      prompt: |
+        Answer in one short sentence (no preamble): What is the chemical
+        symbol for tungsten?
+    - id: q2
+      backend: llm
+      type: fact-list
+      depends_on: []
+      prompt: |
+        Answer in one short sentence (no preamble): Who painted "The
+        Persistence of Memory"?
+    - id: q3
+      backend: llm
+      type: fact-list
+      depends_on: []
+      prompt: |
+        Answer in one short sentence (no preamble): In what year did the
+        Apollo 11 crew first land on the Moon?
+    - id: compose
+      backend: slm
+      type: format
+      depends_on: [q1, q2, q3]
+      prompt: |
+        Format these three answers as `Q1:`, `Q2:`, `Q3:` lines, one
+        short sentence each. Output the three lines only.
+
+        Q1: {{q1.result}}
+        Q2: {{q2.result}}
+        Q3: {{q3.result}}

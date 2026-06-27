@@ -60,6 +60,95 @@ def _parse_json(text: str) -> dict:
     return json.loads(m.group(0))
 
 
+RUBRIC_SYSTEM_NWAY = [
+    {
+        "type": "text",
+        "text": (
+            "You are a strict, calibrated evaluator comparing N candidate "
+            "answers to the same prompt, labeled A, B, C (and so on). "
+            "Score each candidate on a 1-5 integer scale across three "
+            "dimensions:\n\n"
+            "  - accuracy: factual correctness and faithfulness to the prompt's "
+            "constraints.\n"
+            "  - completeness: covers what the prompt asks for.\n"
+            "  - clarity: well-structured, concise, easy to read.\n\n"
+            "Then pick the single best candidate. Prefer the most accurate; "
+            "break ties on completeness, then clarity. Use `tie` only when "
+            "two or more are truly indistinguishable.\n\n"
+            "Output STRICT JSON ONLY, no prose, in this exact shape:\n"
+            "{\n"
+            '  "scores": {\n'
+            '    "A": {"accuracy": <int>, "completeness": <int>, "clarity": <int>},\n'
+            '    "B": {"accuracy": <int>, "completeness": <int>, "clarity": <int>},\n'
+            '    ...\n'
+            "  },\n"
+            '  "winner": "A" | "B" | ... | "tie",\n'
+            '  "confidence": <float 0..1>,\n'
+            '  "reasoning": "<<=3 short sentences>"\n'
+            "}\n"
+        ),
+        "cache_control": {"type": "ephemeral"},
+    }
+]
+
+
+def review_nway(
+    *,
+    case: dict,
+    outputs_by_arm: dict[str, str],
+    frontier: FrontierAdapter,
+    rng: random.Random | None = None,
+) -> ReviewVerdict:
+    """Multi-way blind ranking. Anonymizes arms as A/B/C/... in a randomized order."""
+    rng = rng or random.Random()
+    arms = list(outputs_by_arm.keys())
+    rng.shuffle(arms)
+    labels = [chr(ord("A") + i) for i in range(len(arms))]
+    label_to_arm = dict(zip(labels, arms))
+
+    sections = [
+        f"---\nANSWER {label}:\n{outputs_by_arm[arm]}"
+        for label, arm in zip(labels, arms)
+    ]
+    user = (
+        f"PROMPT GIVEN TO ALL ANSWERS:\n{case['solo_prompt']}\n\n"
+        + "\n\n".join(sections)
+        + f"\n\nScore each of the {len(arms)} answers and pick the single best. "
+        "Return the JSON object only."
+    )
+
+    call = frontier.complete(
+        system=RUBRIC_SYSTEM_NWAY,
+        user=user,
+        max_tokens=900,
+        temperature=0.0,
+    )
+
+    try:
+        parsed = _parse_json(call.text)
+    except (ValueError, json.JSONDecodeError) as e:
+        return ReviewVerdict(
+            winner="tie",
+            confidence=0.0,
+            scores={arm: {} for arm in arms} | {"_parse_error": str(e)},
+            reasoning=f"reviewer JSON parse failed: {call.text[:300]}",
+            reviewer_usage=call.usage,
+        )
+
+    raw_winner = parsed.get("winner", "tie")
+    winner = label_to_arm.get(raw_winner, "tie") if raw_winner in label_to_arm else "tie"
+
+    scores = {label_to_arm[label]: parsed.get("scores", {}).get(label, {}) for label in labels}
+
+    return ReviewVerdict(
+        winner=winner,
+        confidence=float(parsed.get("confidence", 0.0) or 0.0),
+        scores=scores,
+        reasoning=str(parsed.get("reasoning", "")),
+        reviewer_usage=call.usage,
+    )
+
+
 def review(
     *,
     case: dict,

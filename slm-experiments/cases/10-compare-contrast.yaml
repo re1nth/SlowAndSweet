@@ -40,3 +40,36 @@ mixture_composer_prompt: |
 
   E-SCOOTERS: {leaf:scooter}
   E-BIKES: {leaf:bike}
+
+prism_plan:
+  plan_id: compare-contrast
+  description: Domain descriptions to LLM (SLM mis-stated range); LLM composes
+  nodes:
+    - id: scooter
+      backend: llm
+      type: fact-list
+      depends_on: []
+      prompt: |
+        Describe electric scooters as an urban commuting option in 3-4
+        sentences. Cover: typical range, common regulation in US cities,
+        rider effort, storage/parking.
+    - id: bike
+      backend: llm
+      type: fact-list
+      depends_on: []
+      prompt: |
+        Describe electric bicycles as an urban commuting option in 3-4
+        sentences. Cover: typical range, common regulation in US cities,
+        rider effort, storage/parking.
+    - id: compose
+      type: compose
+      depends_on: [scooter, bike]
+      prompt: |
+        Write a compare-and-contrast of electric scooters vs electric
+        bicycles as urban commuting options, using the two descriptions
+        below. Structure: a short intro then four labeled sections (Range,
+        Regulation, Effort, Storage). 5-8 sentences total. Do not just
+        concatenate the inputs.
+
+        E-SCOOTERS: {{scooter.result}}
+        E-BIKES: {{bike.result}}

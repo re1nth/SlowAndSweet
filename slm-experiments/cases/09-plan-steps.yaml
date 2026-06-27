@@ -37,3 +37,33 @@ mixture_composer_prompt: |
 
   SOIL TIPS: {leaf:soil_tips}
   PLANTING TIPS: {leaf:plant_tips}
+
+prism_plan:
+  plan_id: plan-steps
+  description: SLMs surface cheap tips; LLM synthesizes the plan
+  nodes:
+    - id: soil_tips
+      type: fact-list
+      depends_on: []
+      prompt: |
+        List 5 short tips for preparing soil in a beginner home vegetable
+        garden (drainage, amendments, pH). One sentence each.
+    - id: plant_tips
+      type: fact-list
+      depends_on: []
+      prompt: |
+        List 5 short tips for choosing and planting vegetables for a
+        beginner home vegetable garden in early spring (cool-season
+        crops, spacing, watering). One sentence each.
+    - id: compose
+      type: compose
+      depends_on: [soil_tips, plant_tips]
+      prompt: |
+        Write a numbered, step-by-step plan (8-10 steps) for a beginner
+        to set up a small home vegetable garden from scratch in early
+        spring. Each step should be one to two sentences and actionable.
+        Incorporate the soil and planting tips below where appropriate
+        (you do not have to use all of them).
+
+        SOIL TIPS: {{soil_tips.result}}
+        PLANTING TIPS: {{plant_tips.result}}

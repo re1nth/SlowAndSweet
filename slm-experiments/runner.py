@@ -26,9 +26,10 @@ import yaml
 from adapters.frontier import FrontierAdapter
 from adapters.slm import SLMQueueAdapter
 from arms.mixture import run_mixture
+from arms.prism import run_prism
 from arms.solo import run_solo
 from metrics import ArmResult, FrontierUsage
-from reviewer import review
+from reviewer import review, review_nway
 
 
 CASES_DIR = Path(__file__).resolve().parent / "cases"
@@ -56,44 +57,56 @@ def _run_one_case(
     frontier: FrontierAdapter,
     slm: SLMQueueAdapter,
     rng: random.Random,
+    *,
+    include_prism: bool = True,
 ) -> dict:
-    """Run both arms concurrently, then review."""
+    """Run all arms concurrently, then review."""
     print(f"  [case {case['id']}] starting arms")
-    with cf.ThreadPoolExecutor(max_workers=2) as pool:
-        solo_fut = pool.submit(run_solo, case, frontier)
-        mix_fut = pool.submit(run_mixture, case, frontier, slm)
-        solo_res: ArmResult = solo_fut.result()
-        mix_res: ArmResult = mix_fut.result()
-    print(
-        f"  [case {case['id']}] arms done — "
-        f"solo {solo_res.wall_seconds:.1f}s, mixture {mix_res.wall_seconds:.1f}s"
-    )
+    arms_results: dict[str, ArmResult] = {}
+    with cf.ThreadPoolExecutor(max_workers=3) as pool:
+        futs = {
+            "solo": pool.submit(run_solo, case, frontier),
+            "mixture": pool.submit(run_mixture, case, frontier, slm),
+        }
+        if include_prism and case.get("prism_plan"):
+            futs["prism"] = pool.submit(run_prism, case, frontier)
+        for arm, fut in futs.items():
+            arms_results[arm] = fut.result()
 
-    if solo_res.error or mix_res.error:
-        verdict = None
+    times = ", ".join(f"{a} {r.wall_seconds:.1f}s" for a, r in arms_results.items())
+    print(f"  [case {case['id']}] arms done — {times}")
+
+    outputs_by_arm: dict[str, str] = {}
+    arm_errors: dict[str, str | None] = {}
+    for arm, res in arms_results.items():
+        arm_errors[arm] = res.error
+        if not res.error:
+            outputs_by_arm[arm] = res.output
+
+    if len(outputs_by_arm) < 2:
         verdict_dict = {
             "winner": "skipped",
-            "reason": f"arm error — solo: {solo_res.error}, mixture: {mix_res.error}",
+            "reason": "fewer than two arms produced output: " + json.dumps(arm_errors),
         }
     else:
-        verdict = review(
+        verdict = review_nway(
             case=case,
-            solo_output=solo_res.output,
-            mixture_output=mix_res.output,
+            outputs_by_arm=outputs_by_arm,
             frontier=frontier,
             rng=rng,
         )
         verdict_dict = verdict.to_dict()
         print(f"  [case {case['id']}] reviewer → winner={verdict.winner}")
 
-    return {
+    case_record = {
         "case_id": case["id"],
         "name": case.get("name", case["id"]),
         "category": case.get("category"),
-        "solo": solo_res.to_dict(),
-        "mixture": mix_res.to_dict(),
         "review": verdict_dict,
     }
+    for arm, res in arms_results.items():
+        case_record[arm] = res.to_dict()
+    return case_record
 
 
 def run_experiment(
@@ -139,22 +152,30 @@ def run_experiment(
 
 
 def _aggregate(case_results: list[dict]) -> dict:
+    arms = ("solo", "mixture", "prism")
+
     def sum_f(arm: str, key: str) -> int:
-        return sum(int(c[arm]["frontier"].get(key, 0) or 0) for c in case_results)
+        return sum(
+            int((c.get(arm) or {}).get("frontier", {}).get(key, 0) or 0)
+            for c in case_results
+        )
 
     def sum_s(arm: str, key: str) -> int:
-        return sum(int(c[arm]["slm"].get(key, 0) or 0) for c in case_results)
+        return sum(
+            int((c.get(arm) or {}).get("slm", {}).get(key, 0) or 0)
+            for c in case_results
+        )
 
     def sum_t(arm: str) -> float:
-        return sum(float(c[arm].get("wall_seconds", 0.0) or 0.0) for c in case_results)
+        return sum(
+            float((c.get(arm) or {}).get("wall_seconds", 0.0) or 0.0)
+            for c in case_results
+        )
 
     winners = [c["review"].get("winner", "skipped") for c in case_results]
     win_counts = {
-        "solo": winners.count("solo"),
-        "mixture": winners.count("mixture"),
-        "tie": winners.count("tie"),
-        "skipped": winners.count("skipped"),
-    }
+        arm: winners.count(arm) for arm in arms
+    } | {"tie": winners.count("tie"), "skipped": winners.count("skipped")}
 
     reviewer_input = sum(
         int((c["review"].get("reviewer_usage", {}) or {}).get("input_tokens", 0) or 0)
@@ -165,19 +186,20 @@ def _aggregate(case_results: list[dict]) -> dict:
         for c in case_results
     )
 
+    arms_block = {}
+    for arm in arms:
+        if not any(arm in c for c in case_results):
+            continue
+        arms_block[arm] = {
+            "frontier_input_tokens": sum_f(arm, "input_tokens"),
+            "frontier_output_tokens": sum_f(arm, "output_tokens"),
+            "slm_output_tokens": sum_s(arm, "output_tokens"),
+            "wall_seconds": sum_t(arm),
+        }
+
     return {
         "winners": win_counts,
-        "solo": {
-            "frontier_input_tokens": sum_f("solo", "input_tokens"),
-            "frontier_output_tokens": sum_f("solo", "output_tokens"),
-            "wall_seconds": sum_t("solo"),
-        },
-        "mixture": {
-            "frontier_input_tokens": sum_f("mixture", "input_tokens"),
-            "frontier_output_tokens": sum_f("mixture", "output_tokens"),
-            "slm_output_tokens": sum_s("mixture", "output_tokens"),
-            "wall_seconds": sum_t("mixture"),
-        },
+        **arms_block,
         "reviewer": {
             "input_tokens": reviewer_input,
             "output_tokens": reviewer_output,

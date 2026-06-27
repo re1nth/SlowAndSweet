@@ -61,3 +61,52 @@ mixture_composer_prompt: |
   OBJ 1: {leaf:b1}
   OBJ 2: {leaf:b2}
   OBJ 3: {leaf:b3}
+
+prism_plan:
+  plan_id: extract-entities
+  description: Extractions go to LLM (mixture dropped fields); JSON assembly to SLM
+  nodes:
+    - id: b1
+      backend: llm
+      type: extract
+      depends_on: []
+      prompt: |
+        Extract entities from this bio as a JSON object with keys
+        name, role, organization, location (use null if absent). Return
+        the JSON object only.
+
+        Bio: Dr. Lena Patel leads the immunotherapy research group at
+        Stanford Medical Center in Palo Alto.
+    - id: b2
+      backend: llm
+      type: extract
+      depends_on: []
+      prompt: |
+        Extract entities from this bio as a JSON object with keys
+        name, role, organization, location (use null if absent). Return
+        the JSON object only.
+
+        Bio: Marcus Greene is a principal engineer at NovaSky Robotics.
+        He works out of their Berlin office.
+    - id: b3
+      backend: llm
+      type: extract
+      depends_on: []
+      prompt: |
+        Extract entities from this bio as a JSON object with keys
+        name, role, organization, location (use null if absent). Return
+        the JSON object only.
+
+        Bio: Aiko Yamada recently joined a small startup as head of product;
+        her LinkedIn lists no location.
+    - id: compose
+      backend: slm
+      type: format
+      depends_on: [b1, b2, b3]
+      prompt: |
+        Combine these three JSON objects into a single JSON array,
+        in order. Return the array only.
+
+        OBJ 1: {{b1.result}}
+        OBJ 2: {{b2.result}}
+        OBJ 3: {{b3.result}}

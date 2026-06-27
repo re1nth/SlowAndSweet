@@ -59,3 +59,52 @@ mixture_composer_prompt: |
   ES: {leaf:es}
   FR: {leaf:fr}
   DE: {leaf:de}
+
+prism_plan:
+  plan_id: translate-batch
+  description: Translations go to LLM (SLM was awkward in mixture); SLM formats
+  nodes:
+    - id: es
+      backend: llm
+      type: translate
+      depends_on: []
+      prompt: |
+        Translate to Spanish. Return only the Spanish sentence, nothing
+        else.
+
+        Sentence: The weather is unusually warm for this time of year and
+        the gardens are blooming early.
+    - id: fr
+      backend: llm
+      type: translate
+      depends_on: []
+      prompt: |
+        Translate to French. Return only the French sentence, nothing
+        else.
+
+        Sentence: The weather is unusually warm for this time of year and
+        the gardens are blooming early.
+    - id: de
+      backend: llm
+      type: translate
+      depends_on: []
+      prompt: |
+        Translate to German. Return only the German sentence, nothing
+        else.
+
+        Sentence: The weather is unusually warm for this time of year and
+        the gardens are blooming early.
+    - id: compose
+      backend: slm
+      type: format
+      depends_on: [es, fr, de]
+      prompt: |
+        Format these three translations as exactly three lines:
+
+        Spanish: <translation>
+        French: <translation>
+        German: <translation>
+
+        ES: {{es.result}}
+        FR: {{fr.result}}
+        DE: {{de.result}}

@@ -72,3 +72,58 @@ mixture_composer_prompt: |
   PURPOSE: {leaf:purpose}
   LOOP: {leaf:loop}
   COMPLEXITY: {leaf:complexity}
+
+prism_plan:
+  plan_id: code-explain
+  description: Mechanical sub-summaries to SLM; final explanation to LLM
+  nodes:
+    - id: purpose
+      type: summarize
+      depends_on: []
+      prompt: |
+        In one sentence, describe what this Python function is solving
+        at a high level. Do not explain the implementation.
+
+        ```python
+        def two_sum(nums, target):
+            seen = {}
+            for i, n in enumerate(nums):
+                complement = target - n
+                if complement in seen:
+                    return [seen[complement], i]
+                seen[n] = i
+            return None
+        ```
+    - id: loop
+      type: summarize
+      depends_on: []
+      prompt: |
+        In one sentence, describe what the for-loop body does in this
+        Python code (focus on the role of the `seen` dict and the
+        `complement` check). Code:
+
+        ```python
+        for i, n in enumerate(nums):
+            complement = target - n
+            if complement in seen:
+                return [seen[complement], i]
+            seen[n] = i
+        ```
+    - id: complexity
+      type: fact-list
+      depends_on: []
+      prompt: |
+        State the worst-case time and space complexity of a Python
+        function that scans a list once while maintaining a dict from
+        value to index. Be concise; one line.
+    - id: compose
+      type: compose
+      depends_on: [purpose, loop, complexity]
+      prompt: |
+        Write a clean 5-7 sentence explanation of the `two_sum` function
+        using these building blocks. Cover purpose, the loop's role,
+        and complexity. Do not just concatenate — rewrite into smooth prose.
+
+        PURPOSE: {{purpose.result}}
+        LOOP: {{loop.result}}
+        COMPLEXITY: {{complexity.result}}

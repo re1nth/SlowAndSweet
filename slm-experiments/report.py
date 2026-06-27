@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 
 
+_ARMS = ("solo", "mixture", "prism")
+
+
 def render(snapshot: dict) -> str:
     lines: list[str] = []
     lines.append(f"# Experiment run `{snapshot['run_id']}`")
@@ -17,29 +20,25 @@ def render(snapshot: dict) -> str:
 
     t = snapshot["totals"]
     w = t["winners"]
+    present_arms = [a for a in _ARMS if a in t]
     lines.append("## Verdicts")
     lines.append("")
-    lines.append(
-        f"- solo wins: **{w['solo']}** · mixture wins: **{w['mixture']}** · "
-        f"tie: {w['tie']} · skipped: {w['skipped']}"
-    )
+    win_bits = [f"{a}: **{w.get(a, 0)}**" for a in present_arms]
+    lines.append("- " + " · ".join(win_bits) + f" · tie: {w.get('tie', 0)} · skipped: {w.get('skipped', 0)}")
     lines.append("")
 
     lines.append("## Aggregate usage")
     lines.append("")
-    lines.append("| Arm     | Frontier in | Frontier out | SLM out | Wall (s) |")
-    lines.append("| ------- | ----------: | -----------: | ------: | -------: |")
-    lines.append(
-        f"| solo    | {t['solo']['frontier_input_tokens']} | "
-        f"{t['solo']['frontier_output_tokens']} | — | "
-        f"{t['solo']['wall_seconds']:.1f} |"
-    )
-    lines.append(
-        f"| mixture | {t['mixture']['frontier_input_tokens']} | "
-        f"{t['mixture']['frontier_output_tokens']} | "
-        f"{t['mixture']['slm_output_tokens']} | "
-        f"{t['mixture']['wall_seconds']:.1f} |"
-    )
+    lines.append("| Arm     | Frontier in | Frontier out | SLM out | Σ wall (s) |")
+    lines.append("| ------- | ----------: | -----------: | ------: | ---------: |")
+    for arm in present_arms:
+        row = t[arm]
+        slm_cell = str(row.get("slm_output_tokens", "—")) if row.get("slm_output_tokens") else "—"
+        lines.append(
+            f"| {arm:<7} | {row['frontier_input_tokens']} | "
+            f"{row['frontier_output_tokens']} | {slm_cell} | "
+            f"{row['wall_seconds']:.1f} |"
+        )
     lines.append(
         f"| reviewer | {t['reviewer']['input_tokens']} | "
         f"{t['reviewer']['output_tokens']} | — | — |"
@@ -48,25 +47,26 @@ def render(snapshot: dict) -> str:
 
     lines.append("## Per-case")
     lines.append("")
-    lines.append(
-        "| Case | Winner | Solo tokens (in/out) | Solo wall | "
-        "Mix tokens (front in/out · SLM out) | Mix wall |"
-    )
-    lines.append(
-        "| ---- | ------ | -------------------: | --------: | "
-        "-----------------------------------: | -------: |"
-    )
+    header = "| Case | Winner |"
+    sep = "| ---- | ------ |"
+    for arm in present_arms:
+        header += f" {arm} tokens (front in/out · slm out) | {arm} wall |"
+        sep += " ----: | ----: |"
+    lines.append(header)
+    lines.append(sep)
     for c in snapshot["cases"]:
-        s = c["solo"]
-        m = c["mixture"]
         winner = c["review"].get("winner", "?")
-        lines.append(
-            f"| {c['case_id']} | {winner} | "
-            f"{s['frontier']['input_tokens']}/{s['frontier']['output_tokens']} | "
-            f"{s['wall_seconds']:.1f}s | "
-            f"{m['frontier']['input_tokens']}/{m['frontier']['output_tokens']} · "
-            f"{m['slm']['output_tokens']} | {m['wall_seconds']:.1f}s |"
-        )
+        row = f"| {c['case_id']} | {winner} |"
+        for arm in present_arms:
+            ad = c.get(arm) or {}
+            fr = ad.get("frontier", {})
+            sl = ad.get("slm", {})
+            wall = ad.get("wall_seconds", 0.0)
+            row += (
+                f" {fr.get('input_tokens', 0)}/{fr.get('output_tokens', 0)} · "
+                f"{sl.get('output_tokens', 0)} | {wall:.1f}s |"
+            )
+        lines.append(row)
     lines.append("")
 
     lines.append("## Reviewer notes")
@@ -77,10 +77,10 @@ def render(snapshot: dict) -> str:
             lines.append(f"- **{c['case_id']}** — skipped: {rv.get('reason')}")
             continue
         scores = rv.get("scores", {})
+        score_bits = ", ".join(f"{arm}={scores.get(arm)}" for arm in present_arms if arm in scores)
         lines.append(
             f"- **{c['case_id']}** → winner **{rv.get('winner')}** "
-            f"(conf {rv.get('confidence', 0):.2f}). "
-            f"scores solo={scores.get('solo')}, mixture={scores.get('mixture')}. "
+            f"(conf {rv.get('confidence', 0):.2f}). scores {score_bits}. "
             f"{rv.get('reasoning', '').strip()}"
         )
     lines.append("")
