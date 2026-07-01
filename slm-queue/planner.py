@@ -29,6 +29,35 @@ if TYPE_CHECKING:
 _PLACEHOLDER = re.compile(r"\{\{\s*(\w+)\.result\s*\}\}")
 
 
+def _record_run_metric(run: "PlanRun", terminal_status: str) -> None:
+    """Best-effort write to the SlowAndSweet SQLite metrics.
+
+    Lazy-imported so the queue keeps working when the `slowandsweet` wheel
+    isn't installed. Swallows all errors — metrics must never take down a
+    plan run.
+    """
+    try:
+        from slowandsweet import state  # type: ignore
+    except Exception:  # noqa: BLE001
+        return
+    try:
+        slm_tokens_out = sum(
+            (n.get("eval_count") or 0) for n in run.nodes.values()
+        )
+        wall_ms = None
+        if run.finished_at is not None:
+            wall_ms = int((run.finished_at - run.created_at) * 1000)
+        status = "delegated" if terminal_status == "done" else "failed"
+        state.record_call(
+            call_id=run.run_id,
+            status=status,
+            slm_tokens_out=slm_tokens_out or None,
+            wall_ms=wall_ms,
+        )
+    except Exception:  # noqa: BLE001
+        return
+
+
 class PlanError(ValueError):
     pass
 
@@ -203,17 +232,21 @@ class PlanRunner:
                         del in_flight[nid]
 
             # 3. Termination check.
+            terminal: str | None = None
             with self.run.lock:
                 statuses = [n["status"] for n in self.run.nodes.values()]
                 if all(s == "done" for s in statuses):
                     self.run.status = "done"
                     self.run.finished_at = time.time()
-                    return
+                    terminal = "done"
                 # No more progress possible if nothing in flight and nothing newly ready.
-                if not in_flight and not self._ready_node_ids():
+                elif not in_flight and not self._ready_node_ids():
                     self.run.status = "error"
                     self.run.finished_at = time.time()
-                    return
+                    terminal = "error"
+            if terminal is not None:
+                _record_run_metric(self.run, terminal)
+                return
 
             time.sleep(0.3)
 

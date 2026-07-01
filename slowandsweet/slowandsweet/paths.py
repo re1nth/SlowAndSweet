@@ -8,6 +8,10 @@ TOKEN_PATH = STATE_DIR / "token"
 DB_PATH = STATE_DIR / "state.db"
 # Hooks in the Claude Code plugin append one JSON object per line here.
 CALLS_JSONL = STATE_DIR / "calls.jsonl"
+# Touch file: when present, the MCP server refuses to delegate.
+# Env vars don't cross into the MCP server process, so a file is the
+# only reliable cross-process kill switch.
+DISABLED_FLAG = STATE_DIR / "disabled"
 
 
 def ensure_state_dir() -> Path:

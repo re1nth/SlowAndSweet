@@ -36,6 +36,11 @@ from mcp.server.fastmcp import FastMCP
 
 QUEUE_BASE = os.environ.get("SLM_QUEUE_BASE", "http://127.0.0.1:8080")
 TOKEN_PATH = Path(os.path.expanduser("~/.slowandsweet/token"))
+DISABLED_FLAG = Path(os.path.expanduser("~/.slowandsweet/disabled"))
+
+
+class DelegationDisabled(RuntimeError):
+    """Raised when the operator has turned delegation off via `slowandsweet disable`."""
 
 
 def _load_token() -> str | None:
@@ -120,6 +125,11 @@ def _make_server(host: str, port: int) -> FastMCP:
         After submitting, call slm_wait_plan(run_id) to block until all
         nodes complete and retrieve their results.
         """
+        if DISABLED_FLAG.exists():
+            raise DelegationDisabled(
+                "delegation disabled via `slowandsweet disable`; "
+                "re-enable with `slowandsweet enable`"
+            )
         try:
             return _http_post(f"{QUEUE_BASE}/plans", {"plan": plan})
         except urllib.error.HTTPError as e:

@@ -27,6 +27,9 @@ def _build_parser() -> argparse.ArgumentParser:
     ps = sub.add_parser("stats", help="show today's delegation totals")
     ps.add_argument("--json", action="store_true", help="emit machine-readable JSON")
 
+    sub.add_parser("disable", help="stop delegating; MCP server will refuse plans")
+    sub.add_parser("enable", help="re-enable delegation after `disable`")
+
     return p
 
 
@@ -41,6 +44,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "stats":
         from slowandsweet import stats as stats_mod
         return stats_mod.run(as_json=args.json)
+    if args.command == "disable":
+        from slowandsweet import disable as disable_mod
+        return disable_mod.run_disable()
+    if args.command == "enable":
+        from slowandsweet import disable as disable_mod
+        return disable_mod.run_enable()
     # argparse with required=True guarantees we never get here.
     return 2
 

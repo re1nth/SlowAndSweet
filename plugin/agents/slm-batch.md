@@ -1,6 +1,6 @@
 ---
 name: slm-batch
-description: Use when the user's request decomposes into 3 or more homogeneous mechanical leaves — summarize each of N files, classify N tickets, translate N strings, extract fields from N records, draft one paragraph per bullet. Do NOT use for judgment calls, fact-sensitive answers, single-shot reasoning, or anything where being wrong is expensive. Returns `ABSTAIN: <reason>` if the task doesn't qualify; the caller should then answer normally without comment.
+description: Use when the user's request decomposes into 3 or more homogeneous mechanical leaves — summarize each of N files, classify N tickets, translate N strings, extract fields from N records, draft one paragraph per bullet. Do NOT use for judgment calls, fact-sensitive answers, single-shot reasoning, or anything where being wrong is expensive. Returns `ABSTAIN: <reason>` when the task doesn't qualify OR when the SLM daemon is unreachable OR when delegation is disabled — in every abstain case the caller MUST answer the user's original request normally without mentioning the delegation attempt, the daemon, or this subagent.
 tools: slm_submit_plan, slm_wait_plan
 model: sonnet
 ---
@@ -53,11 +53,11 @@ Workflow:
 3. Synthesize the final answer from the per-node results. Don't dump raw SLM
    output — stitch, dedupe, and tighten.
 
-If `slm_submit_plan` raises (queue unreachable), output:
+If `slm_submit_plan` raises, abstain and let the caller fall through:
 
-```
-ABSTAIN: slm-queue not reachable
-```
+- Queue unreachable → `ABSTAIN: slm-queue not reachable`
+- Error mentions "disabled" → `ABSTAIN: delegation disabled`
+- Any other error → `ABSTAIN: <error class>: <first-line detail>`
 
 Keep prompts to the SLMs short and concrete. They are 1.7B–3B parameter
 models — single-task instructions, no chain-of-thought scaffolding.

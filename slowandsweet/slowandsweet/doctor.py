@@ -12,6 +12,7 @@ from typing import Any
 from slowandsweet import state
 from slowandsweet.paths import (
     DB_PATH,
+    DISABLED_FLAG,
     STATE_DIR,
     TOKEN_PATH,
     slms_yaml_path,
@@ -189,6 +190,19 @@ def collect() -> list[dict[str, str]]:
 
     s, d = _safe(_check_mcp)
     results.append({"name": "MCP server reachable", "status": s, "detail": d})
+
+    if DISABLED_FLAG.exists():
+        results.append({
+            "name": "delegation switch",
+            "status": WARN,
+            "detail": f"disabled ({DISABLED_FLAG} present); re-enable with `slowandsweet enable`",
+        })
+    else:
+        results.append({
+            "name": "delegation switch",
+            "status": OK,
+            "detail": "enabled",
+        })
 
     return results
 
