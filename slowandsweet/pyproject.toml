@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slowandsweet"
+version = "0.1.0"
+description = "Local-first CLI daemon for the SlowAndSweet SLM delegation pool"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "SlowAndSweet contributors" }]
+keywords = ["llm", "slm", "ollama", "claude-code", "mcp"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+  "PyYAML>=6.0",
+]
+
+[project.scripts]
+slowandsweet = "slowandsweet.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["slowandsweet*"]

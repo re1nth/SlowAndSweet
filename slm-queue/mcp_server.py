@@ -25,14 +25,37 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 QUEUE_BASE = os.environ.get("SLM_QUEUE_BASE", "http://127.0.0.1:8080")
+TOKEN_PATH = Path(os.path.expanduser("~/.slowandsweet/token"))
+
+
+def _load_token() -> str | None:
+    """Read the shared bearer token. Returns None if the file is missing.
+
+    Missing-file path is intentional: dev workflows that haven't run
+    `slowandsweet init` should still work, just unauthenticated.
+    """
+    try:
+        return TOKEN_PATH.read_text().strip() or None
+    except FileNotFoundError:
+        print(
+            f"warning: {TOKEN_PATH} not found; MCP server running without auth.",
+            file=sys.stderr,
+        )
+        return None
+    except OSError as e:
+        print(f"warning: could not read {TOKEN_PATH}: {e}; running without auth.",
+              file=sys.stderr)
+        return None
 
 
 def _http_post(url: str, body: dict) -> dict:
@@ -142,6 +165,42 @@ def _make_server(host: str, port: int) -> FastMCP:
     return mcp
 
 
+class _BearerTokenMiddleware:
+    """Minimal ASGI middleware that gates every request on a shared bearer token.
+
+    FastMCP's built-in auth (`settings.auth` + a `TokenVerifier`) is designed
+    for OAuth-style resource servers and forces protected-resource metadata
+    endpoints. For our single-user shared-token case that's overkill, so we
+    wrap the Starlette ASGI app FastMCP builds in `streamable_http_app()`
+    with this tiny middleware instead. The token is read once at startup.
+
+    TODO: if FastMCP grows a first-class shared-secret auth seam, switch to it.
+    """
+
+    def __init__(self, app, token: str):
+        self.app = app
+        self.expected = f"Bearer {token}"
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        headers = dict(scope.get("headers") or [])
+        got = headers.get(b"authorization", b"").decode("latin-1")
+        if got != self.expected:
+            await send({
+                "type": "http.response.start",
+                "status": 401,
+                "headers": [(b"content-type", b"application/json")],
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b'{"error":"unauthorized"}',
+            })
+            return
+        await self.app(scope, receive, send)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--host", default="127.0.0.1")
@@ -150,7 +209,20 @@ def main() -> None:
     server = _make_server(args.host, args.port)
     print(f"MCP slm-queue server on http://{args.host}:{args.port}/mcp")
     print(f"  backing queue: {QUEUE_BASE}")
-    server.run(transport="streamable-http")
+
+    token = _load_token()
+    if token is None:
+        server.run(transport="streamable-http")
+        return
+
+    # Token present: run the streamable-http ASGI app under uvicorn ourselves
+    # so we can wrap it with bearer-token auth. Mirrors
+    # FastMCP.run_streamable_http_async() but adds our middleware.
+    import uvicorn  # FastMCP already depends on uvicorn.
+
+    app = _BearerTokenMiddleware(server.streamable_http_app(), token)
+    print(f"  auth: bearer token from {TOKEN_PATH}")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
 if __name__ == "__main__":

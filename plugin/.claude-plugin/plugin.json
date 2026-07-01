@@ -1,0 +1,10 @@
+{
+  "name": "slowandsweet",
+  "version": "0.1.0",
+  "description": "Delegate mechanical leaf work to a local pool of small language models via the slm-queue MCP server.",
+  "author": {
+    "name": "SlowAndSweet contributors"
+  },
+  "license": "MIT",
+  "keywords": ["mcp", "ollama", "slm", "delegation", "local-first"]
+}

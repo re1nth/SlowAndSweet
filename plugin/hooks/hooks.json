@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "mcp__slm-queue__slm_submit_plan|mcp__slm-queue__slm_wait_plan",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/log-delegation.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
