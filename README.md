@@ -53,6 +53,42 @@ benefit from it.
    └──────────────────────────────────────────────────────────────────┘
 ```
 
+## Setup
+
+End-to-end install, macOS or Linux:
+
+```sh
+# 1. One-time system deps
+brew install ollama                      # or: curl -fsSL https://ollama.com/install.sh | sh
+ollama serve &                           # in another terminal is fine
+
+# 2. Install the daemon CLI. Handles the state dir, the bearer token,
+#    the SQLite metrics DB, and pulls the four SLMs.
+pipx install ./slowandsweet
+slowandsweet init
+
+# 3. Install the Claude Code plugin. Reads the token from ~/.slowandsweet/
+#    and templates .mcp.json into ~/.claude/plugins/slowandsweet/.
+sh plugin/install.sh
+
+# 4. Start the two servers. (These will move under one process in a later
+#    revision — for now they're separate so each stays inspectable.)
+python3 slm-queue/server.py --port 8080 &
+python3 slm-queue/mcp_server.py --port 8090 &
+
+# 5. Restart Claude Code. You now have:
+#    - the slm-batch subagent (Claude invokes it automatically on 3+ homogeneous items)
+#    - /delegate <task>, /slm-doctor, /slm-stats slash commands
+#    - a PostToolUse hook logging delegations to ~/.slowandsweet/calls.jsonl
+```
+
+Verify with `slowandsweet doctor` — every check should be `OK`, with `queue
+server reachable` and `MCP server reachable` reflecting the running servers.
+
+**Kill switch.** `slowandsweet disable` writes `~/.slowandsweet/disabled`;
+the MCP tool refuses plans until you `slowandsweet enable`. No Claude
+restart needed. `slowandsweet stats` reports today's delegation totals.
+
 ## Components
 
 The repo is a chain of small artifacts that build up to that flow:
@@ -63,6 +99,8 @@ The repo is a chain of small artifacts that build up to that flow:
 | [`slm-deploy/`](slm-deploy/) | How do you declare which models live on the host and how many copies of each? |
 | [`slm-queue/`](slm-queue/) | How do you submit work, route it to a model, and run a multi-step DAG of prompts? |
 | [`slm-queue/mcp_server.py`](slm-queue/mcp_server.py) | How does the frontier model actually call into the pool? |
+| [`slowandsweet/`](slowandsweet/) | User-facing CLI (`init`, `doctor`, `stats`, `disable`/`enable`) that owns `~/.slowandsweet/` — token, SQLite metrics, kill switch. |
+| [`plugin/`](plugin/) | Claude Code plugin: `slm-batch` subagent, `/delegate` + `/slm-doctor` + `/slm-stats` commands, MCP registration with bearer auth, PostToolUse hook. |
 | [`slm-experiments/`](slm-experiments/) | Does the mixture actually beat frontier-only? SxS harness with a blind reviewer over 10 cases. |
 
 ### `slm-bench/` — pick the SLMs
@@ -173,42 +211,87 @@ session:
 - `slm_submit_plan(plan)` → `{"run_id", "plan_id"}`
 - `slm_wait_plan(run_id, timeout_s?)` → full plan snapshot
 
-Setup (one-time):
+Gated by a shared bearer token read from `~/.slowandsweet/token`. If the
+token file is absent the server runs unauthenticated (dev fallback) and
+prints a warning; when present, requests without a matching
+`Authorization: Bearer <token>` header are rejected with 401.
+
+Don't wire this up by hand — use the [Setup](#setup) flow above. The
+`slowandsweet` CLI generates the token, and `plugin/install.sh` renders
+the plugin's `.mcp.json` with it substituted. If you're just poking at
+the raw MCP surface for dev, start the server directly:
 
 ```sh
-python3 -m venv .venv
-.venv/bin/pip install -r slm-queue/requirements.txt
+python3 slm-queue/server.py --port 8080 &
+python3 slm-queue/mcp_server.py --port 8090 &
 ```
 
-Run alongside the queue:
+### `slowandsweet/` — the user-facing CLI
 
-```sh
-python3 slm-queue/server.py --port 8080      &
-.venv/bin/python slm-queue/mcp_server.py --port 8090 &
-```
+Installable via `pipx install ./slowandsweet`. Stdlib + PyYAML only, so
+the wheel stays thin.
 
-Register in `.mcp.json` (project root or `~/.claude/mcp.json`):
+| Command                    | What it does |
+| -------------------------- | ------------ |
+| `slowandsweet init`        | Create `~/.slowandsweet/`, generate a 32-byte hex token (mode 0600), init the SQLite metrics DB, `ollama pull` each model in `slm-deploy/slms.yaml`. Idempotent. Does not auto-install Ollama — prints instructions and exits non-zero if missing. |
+| `slowandsweet doctor`      | Ten-item health checklist (state dir, token mode, DB schema, Ollama reachable, each required model present, queue + MCP reachable, kill-switch state). `--json` for machine output. |
+| `slowandsweet stats`       | Today's `delegated / abstained / failed` totals from `~/.slowandsweet/state.db`, plus top abstain reasons. |
+| `slowandsweet disable`     | Create `~/.slowandsweet/disabled`. The MCP tool checks for it and refuses plans until re-enabled. |
+| `slowandsweet enable`      | Remove the flag. |
 
-```json
-{
-  "mcpServers": {
-    "slm-queue": {
-      "type": "http",
-      "url": "http://127.0.0.1:8090/mcp"
-    }
-  }
-}
-```
+`PlanRunner` in `slm-queue/planner.py` writes one row to the `calls`
+table (and rolls up `metrics_daily`) on every terminal plan transition,
+via a lazy import — the queue keeps running if the wheel isn't
+installed.
 
-Restart Claude Code. The two tools show up in the tool list alongside
-`Read` and `Bash`; the assistant can now decompose a prompt, dispatch
-to local SLMs, and compose the answer from what comes back.
+### `plugin/` — the Claude Code plugin
+
+Symlinked into `~/.claude/plugins/slowandsweet/` by `plugin/install.sh`,
+so you can edit files in-repo and see them live. The exception is
+`.mcp.json`: `install.sh` renders it from `.mcp.json.template` with the
+real token substituted, then writes it as a real file (not a symlink)
+in the install dir. This is why the install order is `slowandsweet init`
+before `sh plugin/install.sh` — the token has to exist first.
+
+The load-bearing surfaces:
+
+- `agents/slm-batch.md` — the delegation subagent. Its `description`
+  field is what Claude reads to decide when to invoke it (≥3 homogeneous
+  mechanical items; abstain otherwise). Body handles the DAG build,
+  submit/wait, and synthesis.
+- `commands/delegate.md` — `/delegate <task>` force-invokes the
+  subagent, bypassing the heuristic.
+- `commands/slm-doctor.md`, `commands/slm-stats.md` — shell to the CLI.
+- `hooks/hooks.json` — a `PostToolUse` hook scoped to
+  `mcp__slm-queue__slm_*` only (not `.*` — that would fire on every
+  tool call). Appends one JSONL line per delegation to
+  `~/.slowandsweet/calls.jsonl`.
+
+There is intentionally no `CLAUDE.md` at the plugin root — Claude Code
+plugins don't auto-load a root `CLAUDE.md`, so any prose there would be
+invisible. The subagent's `description` carries the load-bearing
+"when to invoke" and "silently fall through on abstain" contract.
 
 ## What's not in scope
 
-This is a prototype: in-memory state (restart loses queues and run
-history), no auth, no retries, no streaming responses, no distributed
-workers, no cancellation, no result-table eviction. The deploy
-validator and the queue both run on one host. The point of the repo
-is the shape of the delegation pattern, not a production-ready
-implementation.
+Still a prototype. What's there now:
+
+- Auth on the MCP surface (shared bearer token, gated by
+  `~/.slowandsweet/token`).
+- SQLite-backed metrics for delegations (`~/.slowandsweet/state.db`) so
+  `slowandsweet stats` reflects real runs.
+- A cross-process kill switch (`slowandsweet disable`).
+- A one-command plugin install.
+
+What's still out:
+
+- Queue/plan-run state is in memory — restarting `slm-queue/server.py`
+  loses in-flight runs and history.
+- No retries, no streaming responses, no distributed workers, no
+  cancellation, no result-table eviction, no per-node timeouts.
+- The router in `slm-queue/router.py` is regex over keywords, not a
+  learned classifier.
+- The deploy validator and both servers run on one host.
+
+The point of the repo is the shape of the delegation pattern, not a
+production-ready implementation.
