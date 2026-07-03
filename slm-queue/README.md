@@ -320,8 +320,23 @@ python3 -m venv .venv
 .venv/bin/pip install -r slm-queue/requirements.txt    # mcp[cli]
 
 # Each session: start both processes
-python3 slm-queue/server.py --port 8080      &        # queue + workers
+.venv/bin/python slm-queue/server.py --port 8080     &  # queue + workers
 .venv/bin/python slm-queue/mcp_server.py --port 8090 &  # MCP adapter
+```
+
+`mcp_server.py` must be launched with `.venv/bin/python` — the `mcp[cli]`
+dependency only lives in the venv. Using `python3` (system Homebrew) will
+fail with `ModuleNotFoundError: No module named 'mcp'`. `server.py` is
+stdlib-only so either interpreter works, but using `.venv/bin/python` for
+both keeps the invocation consistent.
+
+If a previous session left either port bound (`OSError: [Errno 48]
+Address already in use`), find and stop the stale process before
+restarting:
+
+```sh
+lsof -i :8080 -i :8090        # shows PIDs holding the ports
+kill <pid> <pid>
 ```
 
 Add to `.mcp.json` (project root or `~/.claude/mcp.json`):
