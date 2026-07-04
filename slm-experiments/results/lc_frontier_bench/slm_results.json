@@ -1,0 +1,342 @@
+[
+  {
+    "slug": "valid-parentheses",
+    "title": "Valid Parentheses",
+    "difficulty": "Easy",
+    "run_id": "7f609179df6d",
+    "wall_s": 9.0,
+    "slm_input_tok_tiktoken": 602,
+    "slm_output_tok_tiktoken": 188,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 107,
+        "tiktoken_input": 242,
+        "tiktoken_output": 106,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Valid Parentheses\n\nGiven a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`, determine if the input string is valid.\n\nAn input string is valid if:\n\n\t- Open brackets must be closed by the same type of brackets.\n\t- Open brackets must be closed in the correct order.\n\t- Every close bracket has a corresponding open bracket of the same type.\n\n\u00a0\n\nExample 1:\n\n**Input:** s = \"()\"\n\n**Output:** true\n\nExample 2:\n\n**Input:** s = \"()[]{}\"\n\n**Output:** true\n\nExample 3:\n\n**Input:** s = \"(]\"\n\n**Output:** false\n\nExample 4:\n\n**Input:** s = \"([])\"\n\n**Output:** true\n\nExample 5:\n\n**Input:** s = \"([)]\"\n\n**Output:** false\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= s.length <= 10^4`\n\t- `s` consists of parentheses only `'()[]{}'`.",
+        "result_text": "- Use a stack to keep track of opening brackets.\n- Iterate through the string, pushing opening brackets onto the stack and popping them when a matching closing bracket is found. Ensure each pop operation can find a corresponding push if it's the correct sequence.\n- If at any point there are no more opening brackets in the stack but there are still unclosed closing brackets, return false.\n- After iterating through the string, ensure the stack is empty (meaning all brackets were properly closed). Return true if so; otherwise, return false.",
+        "started_at": 1783186410.953995,
+        "finished_at": 1783186414.253217
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 83,
+        "tiktoken_input": 360,
+        "tiktoken_output": 82,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Valid Parentheses\n\nGiven a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`, determine if the input string is valid.\n\nAn input string is valid if:\n\n\t- Open brackets must be closed by the same type of brackets.\n\t- Open brackets must be closed in the correct order.\n\t- Every close bracket has a corresponding open bracket of the same type.\n\n\u00a0\n\nExample 1:\n\n**Input:** s = \"()\"\n\n**Output:** true\n\nExample 2:\n\n**Input:** s = \"()[]{}\"\n\n**Output:** true\n\nExample 3:\n\n**Input:** s = \"(]\"\n\n**Output:** false\n\nExample 4:\n\n**Input:** s = \"([])\"\n\n**Output:** true\n\nExample 5:\n\n**Input:** s = \"([)]\"\n\n**Output:** false\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= s.length <= 10^4`\n\t- `s` consists of parentheses only `'()[]{}'`.\n\nALGORITHM SKETCH:\n- Use a stack to keep track of opening brackets.\n- Iterate through the string, pushing opening brackets onto the stack and popping them when a matching closing bracket is found. Ensure each pop operation can find a corresponding push if it's the correct sequence.\n- If at any point there are no more opening brackets in the stack but there are still unclosed closing brackets, return false.\n- After iterating through the string, ensure the stack is empty (meaning all brackets were properly closed). Return true if so; otherwise, return false.",
+        "result_text": "```python\ndef isValid(s: str) -> bool:\n    stack = []\n    bracket_map = {')': '(', '}': '{', ']': '['}\n    \n    for char in s:\n        if char in bracket_map.values():\n            stack.append(char)\n        elif char in bracket_map and (not stack or stack.pop() != bracket_map[char]):\n            return False\n    return not stack\n```",
+        "started_at": 1783186414.7940228,
+        "finished_at": 1783186417.004023
+      }
+    ],
+    "final_code": "```python\ndef isValid(s: str) -> bool:\n    stack = []\n    bracket_map = {')': '(', '}': '{', ']': '['}\n    \n    for char in s:\n        if char in bracket_map.values():\n            stack.append(char)\n        elif char in bracket_map and (not stack or stack.pop() != bracket_map[char]):\n            return False\n    return not stack\n```"
+  },
+  {
+    "slug": "merge-two-sorted-lists",
+    "title": "Merge Two Sorted Lists",
+    "difficulty": "Easy",
+    "run_id": "f71505b9987d",
+    "wall_s": 9.0,
+    "slm_input_tok_tiktoken": 586,
+    "slm_output_tok_tiktoken": 239,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 101,
+        "tiktoken_input": 237,
+        "tiktoken_output": 100,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Merge Two Sorted Lists\n\nYou are given the heads of two sorted linked lists `list1` and `list2`.\n\nMerge the two lists into one **sorted** list. The list should be made by splicing together the nodes of the first two lists.\n\nReturn *the head of the merged linked list*.\n\n\u00a0\n\nExample 1:\n\n**Input:** list1 = [1,2,4], list2 = [1,3,4]\n**Output:** [1,1,2,3,4,4]\n\nExample 2:\n\n**Input:** list1 = [], list2 = []\n**Output:** []\n\nExample 3:\n\n**Input:** list1 = [], list2 = [0]\n**Output:** [0]\n\n\u00a0\n\n**Constraints:**\n\n\t- The number of nodes in both lists is in the range `[0, 50]`.\n\t- `-100 <= Node.val <= 100`\n\t- Both `list1` and `list2` are sorted in **non-decreasing** order.",
+        "result_text": "- Initialize a dummy node to act as the starting point of the merged list.\n- Use a pointer `current` initialized to the dummy node.\n- Iterate through both lists until one is fully traversed:\n  - Compare values at current nodes of both lists and append the smaller value's next reference to the merged list.\n  - Move the corresponding list pointer forward.\n- Append remaining nodes from either list after merging.\n- Return the next node of `dummy` as the head of the merged list.",
+        "started_at": 1783186419.994709,
+        "finished_at": 1783186422.329275
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 140,
+        "tiktoken_input": 349,
+        "tiktoken_output": 139,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Merge Two Sorted Lists\n\nYou are given the heads of two sorted linked lists `list1` and `list2`.\n\nMerge the two lists into one **sorted** list. The list should be made by splicing together the nodes of the first two lists.\n\nReturn *the head of the merged linked list*.\n\n\u00a0\n\nExample 1:\n\n**Input:** list1 = [1,2,4], list2 = [1,3,4]\n**Output:** [1,1,2,3,4,4]\n\nExample 2:\n\n**Input:** list1 = [], list2 = []\n**Output:** []\n\nExample 3:\n\n**Input:** list1 = [], list2 = [0]\n**Output:** [0]\n\n\u00a0\n\n**Constraints:**\n\n\t- The number of nodes in both lists is in the range `[0, 50]`.\n\t- `-100 <= Node.val <= 100`\n\t- Both `list1` and `list2` are sorted in **non-decreasing** order.\n\nALGORITHM SKETCH:\n- Initialize a dummy node to act as the starting point of the merged list.\n- Use a pointer `current` initialized to the dummy node.\n- Iterate through both lists until one is fully traversed:\n  - Compare values at current nodes of both lists and append the smaller value's next reference to the merged list.\n  - Move the corresponding list pointer forward.\n- Append remaining nodes from either list after merging.\n- Return the next node of `dummy` as the head of the merged list.",
+        "result_text": "```python\ndef mergeTwoLists(l1: ListNode, l2: ListNode) -> ListNode:\n    dummy = ListNode(0)\n    current = dummy\n    \n    while l1 and l2:\n        if l1.val < l2.val:\n            current.next = l1\n            l1 = l1.next\n        else:\n            current.next = l2\n            l2 = l2.next\n        current = current.next\n        \n    if l1: \n        current.next = l1\n    elif l2:\n        current.next = l2\n    \n    return dummy.next\n```\n\nThis Python function implements the described algorithm to merge two sorted linked lists into one sorted list.",
+        "started_at": 1783186422.734199,
+        "finished_at": 1783186425.990589
+      }
+    ],
+    "final_code": "```python\ndef mergeTwoLists(l1: ListNode, l2: ListNode) -> ListNode:\n    dummy = ListNode(0)\n    current = dummy\n    \n    while l1 and l2:\n        if l1.val < l2.val:\n            current.next = l1\n            l1 = l1.next\n        else:\n            current.next = l2\n            l2 = l2.next\n        current = current.next\n        \n    if l1: \n        current.next = l1\n    elif l2:\n        current.next = l2\n    \n    return dummy.next\n```\n\nThis Python function implements the described algorithm to merge two sorted linked lists into one sorted list."
+  },
+  {
+    "slug": "maximum-subarray",
+    "title": "Maximum Subarray",
+    "difficulty": "Medium",
+    "run_id": "74ea96659d41",
+    "wall_s": 6.0,
+    "slm_input_tok_tiktoken": 656,
+    "slm_output_tok_tiktoken": 165,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 109,
+        "tiktoken_input": 268,
+        "tiktoken_output": 108,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Maximum Subarray\n\nGiven an integer array `nums`, find the subarray with the largest sum, and return *its sum*.\n\n\u00a0\n\nExample 1:\n\n**Input:** nums = [-2,1,-3,4,-1,2,1,-5,4]\n**Output:** 6\n**Explanation:** The subarray [4,-1,2,1] has the largest sum 6.\n\nExample 2:\n\n**Input:** nums = [1]\n**Output:** 1\n**Explanation:** The subarray [1] has the largest sum 1.\n\nExample 3:\n\n**Input:** nums = [5,4,-1,7,8]\n**Output:** 23\n**Explanation:** The subarray [5,4,-1,7,8] has the largest sum 23.\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= nums.length <= 10^5`\n\t- `-10^4 <= nums[i] <= 10^4`\n\n\u00a0\n\n**Follow up:** If you have figured out the `O(n)` solution, try coding another solution using the **divide and conquer** approach, which is more subtle.",
+        "result_text": "- Use Kadane's Algorithm to find the maximum subarray sum in O(n) time complexity.\n- Maintain a running sum (`cur_max`) initialized to 0, and a global max sum (`global_max`) also initialized to 0.\n- Iterate through the array, updating `cur_max` with the current element or the sum of `cur_max` plus the current element, whichever is larger.\n- Update `global_max` with the maximum value between itself and `cur_max`.\n- Return `global_max` as the result.",
+        "started_at": 1783186429.0206761,
+        "finished_at": 1783186431.559477
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 58,
+        "tiktoken_input": 388,
+        "tiktoken_output": 57,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Maximum Subarray\n\nGiven an integer array `nums`, find the subarray with the largest sum, and return *its sum*.\n\n\u00a0\n\nExample 1:\n\n**Input:** nums = [-2,1,-3,4,-1,2,1,-5,4]\n**Output:** 6\n**Explanation:** The subarray [4,-1,2,1] has the largest sum 6.\n\nExample 2:\n\n**Input:** nums = [1]\n**Output:** 1\n**Explanation:** The subarray [1] has the largest sum 1.\n\nExample 3:\n\n**Input:** nums = [5,4,-1,7,8]\n**Output:** 23\n**Explanation:** The subarray [5,4,-1,7,8] has the largest sum 23.\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= nums.length <= 10^5`\n\t- `-10^4 <= nums[i] <= 10^4`\n\n\u00a0\n\n**Follow up:** If you have figured out the `O(n)` solution, try coding another solution using the **divide and conquer** approach, which is more subtle.\n\nALGORITHM SKETCH:\n- Use Kadane's Algorithm to find the maximum subarray sum in O(n) time complexity.\n- Maintain a running sum (`cur_max`) initialized to 0, and a global max sum (`global_max`) also initialized to 0.\n- Iterate through the array, updating `cur_max` with the current element or the sum of `cur_max` plus the current element, whichever is larger.\n- Update `global_max` with the maximum value between itself and `cur_max`.\n- Return `global_max` as the result.",
+        "result_text": "```python\ndef maxSubArray(nums):\n    cur_max = global_max = nums[0]\n    for num in nums[1:]:\n        cur_max = max(num, cur_max + num)\n        global_max = max(global_max, cur_max)\n    return global_max\n```",
+        "started_at": 1783186432.266774,
+        "finished_at": 1783186434.0904498
+      }
+    ],
+    "final_code": "```python\ndef maxSubArray(nums):\n    cur_max = global_max = nums[0]\n    for num in nums[1:]:\n        cur_max = max(num, cur_max + num)\n        global_max = max(global_max, cur_max)\n    return global_max\n```"
+  },
+  {
+    "slug": "climbing-stairs",
+    "title": "Climbing Stairs",
+    "difficulty": "Easy",
+    "run_id": "2d4047628424",
+    "wall_s": 9.0,
+    "slm_input_tok_tiktoken": 554,
+    "slm_output_tok_tiktoken": 226,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 129,
+        "tiktoken_input": 207,
+        "tiktoken_output": 128,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Climbing Stairs\n\nYou are climbing a staircase. It takes `n` steps to reach the top.\n\nEach time you can either climb `1` or `2` steps. In how many distinct ways can you climb to the top?\n\n\u00a0\n\nExample 1:\n\n**Input:** n = 2\n**Output:** 2\n**Explanation:** There are two ways to climb to the top.\n1. 1 step + 1 step\n2. 2 steps\n\nExample 2:\n\n**Input:** n = 3\n**Output:** 3\n**Explanation:** There are three ways to climb to the top.\n1. 1 step + 1 step + 1 step\n2. 1 step + 2 steps\n3. 2 steps + 1 step\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= n <= 45`",
+        "result_text": "- The problem can be solved using dynamic programming with a time complexity of O(n).\n- Initialize an array `dp` where `dp[i]` represents the number of distinct ways to climb `i` steps.\n- Set `dp[0] = 1` and `dp[1] = 1`, as there's only one way to reach step 0 (do nothing) and two ways to reach step 1.\n- For each step from 2 to n, update `dp[i] = dp[i-1] + dp[i-2]`.\n- The final result is stored in `dp[n]`.",
+        "started_at": 1783186435.0458949,
+        "finished_at": 1783186437.841558
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 99,
+        "tiktoken_input": 347,
+        "tiktoken_output": 98,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Climbing Stairs\n\nYou are climbing a staircase. It takes `n` steps to reach the top.\n\nEach time you can either climb `1` or `2` steps. In how many distinct ways can you climb to the top?\n\n\u00a0\n\nExample 1:\n\n**Input:** n = 2\n**Output:** 2\n**Explanation:** There are two ways to climb to the top.\n1. 1 step + 1 step\n2. 2 steps\n\nExample 2:\n\n**Input:** n = 3\n**Output:** 3\n**Explanation:** There are three ways to climb to the top.\n1. 1 step + 1 step + 1 step\n2. 1 step + 2 steps\n3. 2 steps + 1 step\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= n <= 45`\n\nALGORITHM SKETCH:\n- The problem can be solved using dynamic programming with a time complexity of O(n).\n- Initialize an array `dp` where `dp[i]` represents the number of distinct ways to climb `i` steps.\n- Set `dp[0] = 1` and `dp[1] = 1`, as there's only one way to reach step 0 (do nothing) and two ways to reach step 1.\n- For each step from 2 to n, update `dp[i] = dp[i-1] + dp[i-2]`.\n- The final result is stored in `dp[n]`.",
+        "result_text": "```python\ndef climbStairs(n: int) -> int:\n    if n == 0 or n == 1:\n        return 1\n    \n    dp = [0] * (n + 1)\n    dp[0], dp[1] = 1, 1\n    \n    for i in range(2, n + 1):\n        dp[i] = dp[i - 1] + dp[i - 2]\n    \n    return dp[n]\n```",
+        "started_at": 1783186438.5836108,
+        "finished_at": 1783186441.102402
+      }
+    ],
+    "final_code": "```python\ndef climbStairs(n: int) -> int:\n    if n == 0 or n == 1:\n        return 1\n    \n    dp = [0] * (n + 1)\n    dp[0], dp[1] = 1, 1\n    \n    for i in range(2, n + 1):\n        dp[i] = dp[i - 1] + dp[i - 2]\n    \n    return dp[n]\n```"
+  },
+  {
+    "slug": "best-time-to-buy-and-sell-stock",
+    "title": "Best Time to Buy and Sell Stock",
+    "difficulty": "Easy",
+    "run_id": "3c3009da4b8a",
+    "wall_s": 6.0,
+    "slm_input_tok_tiktoken": 713,
+    "slm_output_tok_tiktoken": 194,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 124,
+        "tiktoken_input": 289,
+        "tiktoken_output": 123,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Best Time to Buy and Sell Stock\n\nYou are given an array `prices` where `prices[i]` is the price of a given stock on the `i^th` day.\n\nYou want to maximize your profit by choosing a **single day** to buy one stock and choosing a **different day in the future** to sell that stock.\n\nReturn *the maximum profit you can achieve from this transaction*. If you cannot achieve any profit, return `0`.\n\n\u00a0\n\nExample 1:\n\n**Input:** prices = [7,1,5,3,6,4]\n**Output:** 5\n**Explanation:** Buy on day 2 (price = 1) and sell on day 5 (price = 6), profit = 6-1 = 5.\nNote that buying on day 2 and selling on day 1 is not allowed because you must buy before you sell.\n\nExample 2:\n\n**Input:** prices = [7,6,4,3,1]\n**Output:** 0\n**Explanation:** In this case, no transactions are done and the max profit = 0.\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= prices.length <= 10^5`\n\t- `0 <= prices[i] <= 10^4`",
+        "result_text": "- Initialize a variable `minPrice` to track the minimum price encountered so far, and a variable `maxProfit` to track the maximum profit that can be achieved.\n- Iterate through the `prices` array from day 1 onwards:\n  - Update `minPrice` if the current day's price is lower than or equal to `minPrice`.\n  - Calculate potential profit by subtracting `minPrice` from the current day's price and update `maxProfit` if this potential profit is greater than `maxProfit`.\n- Return `maxProfit`. If no profitable transactions are found, return 0.",
+        "started_at": 1783186444.075134,
+        "finished_at": 1783186446.945173
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 72,
+        "tiktoken_input": 424,
+        "tiktoken_output": 71,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Best Time to Buy and Sell Stock\n\nYou are given an array `prices` where `prices[i]` is the price of a given stock on the `i^th` day.\n\nYou want to maximize your profit by choosing a **single day** to buy one stock and choosing a **different day in the future** to sell that stock.\n\nReturn *the maximum profit you can achieve from this transaction*. If you cannot achieve any profit, return `0`.\n\n\u00a0\n\nExample 1:\n\n**Input:** prices = [7,1,5,3,6,4]\n**Output:** 5\n**Explanation:** Buy on day 2 (price = 1) and sell on day 5 (price = 6), profit = 6-1 = 5.\nNote that buying on day 2 and selling on day 1 is not allowed because you must buy before you sell.\n\nExample 2:\n\n**Input:** prices = [7,6,4,3,1]\n**Output:** 0\n**Explanation:** In this case, no transactions are done and the max profit = 0.\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= prices.length <= 10^5`\n\t- `0 <= prices[i] <= 10^4`\n\nALGORITHM SKETCH:\n- Initialize a variable `minPrice` to track the minimum price encountered so far, and a variable `maxProfit` to track the maximum profit that can be achieved.\n- Iterate through the `prices` array from day 1 onwards:\n  - Update `minPrice` if the current day's price is lower than or equal to `minPrice`.\n  - Calculate potential profit by subtracting `minPrice` from the current day's price and update `maxProfit` if this potential profit is greater than `maxProfit`.\n- Return `maxProfit`. If no profitable transactions are found, return 0.",
+        "result_text": "```python\ndef maxProfit(prices):\n    minPrice = float('inf')\n    maxProfit = 0\n    \n    for price in prices:\n        minPrice = min(minPrice, price)\n        potential_profit = price - minPrice\n        maxProfit = max(maxProfit, potential_profit)\n    \n    return max(0, maxProfit)\n```",
+        "started_at": 1783186447.493477,
+        "finished_at": 1783186449.64239
+      }
+    ],
+    "final_code": "```python\ndef maxProfit(prices):\n    minPrice = float('inf')\n    maxProfit = 0\n    \n    for price in prices:\n        minPrice = min(minPrice, price)\n        potential_profit = price - minPrice\n        maxProfit = max(maxProfit, potential_profit)\n    \n    return max(0, maxProfit)\n```"
+  },
+  {
+    "slug": "contains-duplicate",
+    "title": "Contains Duplicate",
+    "difficulty": "Easy",
+    "run_id": "c5cdfacff967",
+    "wall_s": 6.0,
+    "slm_input_tok_tiktoken": 495,
+    "slm_output_tok_tiktoken": 100,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 62,
+        "tiktoken_input": 211,
+        "tiktoken_output": 61,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Contains Duplicate\n\nGiven an integer array `nums`, return `true` if any value appears **at least twice** in the array, and return `false` if every element is distinct.\n\n\u00a0\n\nExample 1:\n\n**Input:** nums = [1,2,3,1]\n\n**Output:** true\n\n**Explanation:**\n\nThe element 1 occurs at the indices 0 and 3.\n\nExample 2:\n\n**Input:** nums = [1,2,3,4]\n\n**Output:** false\n\n**Explanation:**\n\nAll elements are distinct.\n\nExample 3:\n\n**Input:** nums = [1,1,1,3,3,4,3,2,4,2]\n\n**Output:** true\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= nums.length <= 10^5`\n\t- `-10^9 <= nums[i] <= 10^9`",
+        "result_text": "- Use a set to track seen numbers and check for duplicates.\n- Iterate through the array, adding each number to the set. If a duplicate is found during insertion (i.e., number already in set), return `true`.\n- If no duplicates are found after checking all elements, return `false`.",
+        "started_at": 1783186450.095349,
+        "finished_at": 1783186451.7536068
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 40,
+        "tiktoken_input": 284,
+        "tiktoken_output": 39,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Contains Duplicate\n\nGiven an integer array `nums`, return `true` if any value appears **at least twice** in the array, and return `false` if every element is distinct.\n\n\u00a0\n\nExample 1:\n\n**Input:** nums = [1,2,3,1]\n\n**Output:** true\n\n**Explanation:**\n\nThe element 1 occurs at the indices 0 and 3.\n\nExample 2:\n\n**Input:** nums = [1,2,3,4]\n\n**Output:** false\n\n**Explanation:**\n\nAll elements are distinct.\n\nExample 3:\n\n**Input:** nums = [1,1,1,3,3,4,3,2,4,2]\n\n**Output:** true\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= nums.length <= 10^5`\n\t- `-10^9 <= nums[i] <= 10^9`\n\nALGORITHM SKETCH:\n- Use a set to track seen numbers and check for duplicates.\n- Iterate through the array, adding each number to the set. If a duplicate is found during insertion (i.e., number already in set), return `true`.\n- If no duplicates are found after checking all elements, return `false`.",
+        "result_text": "```python\ndef containsDuplicate(nums):\n    seen = set()\n    for num in nums:\n        if num in seen:\n            return True\n        seen.add(num)\n    return False\n```",
+        "started_at": 1783186452.3133838,
+        "finished_at": 1783186453.645823
+      }
+    ],
+    "final_code": "```python\ndef containsDuplicate(nums):\n    seen = set()\n    for num in nums:\n        if num in seen:\n            return True\n        seen.add(num)\n    return False\n```"
+  },
+  {
+    "slug": "product-of-array-except-self",
+    "title": "Product of Array Except Self",
+    "difficulty": "Medium",
+    "run_id": "d31bfaac5331",
+    "wall_s": 6.0,
+    "slm_input_tok_tiktoken": 670,
+    "slm_output_tok_tiktoken": 210,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 65,
+        "tiktoken_input": 297,
+        "tiktoken_output": 64,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Product of Array Except Self\n\nGiven an integer array `nums`, return *an array* `answer` *such that* `answer[i]` *is equal to the product of all the elements of* `nums` *except* `nums[i]`.\n\nThe product of any prefix or suffix of `nums` is **guaranteed** to fit in a **32-bit** integer.\n\nYou must write an algorithm that runs in\u00a0`O(n)`\u00a0time and without using the division operation.\n\n\u00a0\n\nExample 1:\n**Input:** nums = [1,2,3,4]\n**Output:** [24,12,8,6]\nExample 2:\n**Input:** nums = [-1,1,0,-3,3]\n**Output:** [0,0,9,0,0]\n\n\u00a0\n\n**Constraints:**\n\n\t- `2 <= nums.length <= 10^5`\n\t- `-30 <= nums[i] <= 30`\n\t- The input is generated such that `answer[i]` is **guaranteed** to fit in a **32-bit** integer.\n\n\u00a0\n\n**Follow up:**\u00a0Can you solve the problem in `O(1)`\u00a0extra\u00a0space complexity? (The output array **does not** count as extra space for space complexity analysis.)",
+        "result_text": "- Use prefix and suffix products to calculate the result without division.\n- Calculate prefix products iteratively from left to right.\n- Calculate suffix products iteratively from right to left.\n- Multiply corresponding prefix and suffix products at each index to get `answer[i]`.\n- Adjust for zeros in the array to handle edge cases.",
+        "started_at": 1783186456.116676,
+        "finished_at": 1783186457.966936
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 147,
+        "tiktoken_input": 373,
+        "tiktoken_output": 146,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Product of Array Except Self\n\nGiven an integer array `nums`, return *an array* `answer` *such that* `answer[i]` *is equal to the product of all the elements of* `nums` *except* `nums[i]`.\n\nThe product of any prefix or suffix of `nums` is **guaranteed** to fit in a **32-bit** integer.\n\nYou must write an algorithm that runs in\u00a0`O(n)`\u00a0time and without using the division operation.\n\n\u00a0\n\nExample 1:\n**Input:** nums = [1,2,3,4]\n**Output:** [24,12,8,6]\nExample 2:\n**Input:** nums = [-1,1,0,-3,3]\n**Output:** [0,0,9,0,0]\n\n\u00a0\n\n**Constraints:**\n\n\t- `2 <= nums.length <= 10^5`\n\t- `-30 <= nums[i] <= 30`\n\t- The input is generated such that `answer[i]` is **guaranteed** to fit in a **32-bit** integer.\n\n\u00a0\n\n**Follow up:**\u00a0Can you solve the problem in `O(1)`\u00a0extra\u00a0space complexity? (The output array **does not** count as extra space for space complexity analysis.)\n\nALGORITHM SKETCH:\n- Use prefix and suffix products to calculate the result without division.\n- Calculate prefix products iteratively from left to right.\n- Calculate suffix products iteratively from right to left.\n- Multiply corresponding prefix and suffix products at each index to get `answer[i]`.\n- Adjust for zeros in the array to handle edge cases.",
+        "result_text": "```python\ndef productExceptSelf(nums):\n    n = len(nums)\n    left_products, right_products, answer = [1] * n, [1] * n, [1] * n\n    \n    # Calculate prefix products\n    for i in range(1, n):\n        left_products[i] = nums[i - 1] * left_products[i - 1]\n    \n    # Calculate suffix products and update the answer list\n    for i in range(n - 2, -1, -1):\n        right_products[i] = nums[i + 1] * right_products[i + 1]\n        answer[i] *= left_products[i] * right_products[i]\n    \n    return answer\n```",
+        "started_at": 1783186458.436812,
+        "finished_at": 1783186461.840705
+      }
+    ],
+    "final_code": "```python\ndef productExceptSelf(nums):\n    n = len(nums)\n    left_products, right_products, answer = [1] * n, [1] * n, [1] * n\n    \n    # Calculate prefix products\n    for i in range(1, n):\n        left_products[i] = nums[i - 1] * left_products[i - 1]\n    \n    # Calculate suffix products and update the answer list\n    for i in range(n - 2, -1, -1):\n        right_products[i] = nums[i + 1] * right_products[i + 1]\n        answer[i] *= left_products[i] * right_products[i]\n    \n    return answer\n```"
+  },
+  {
+    "slug": "single-number",
+    "title": "Single Number",
+    "difficulty": "Easy",
+    "run_id": "df62e775e2e5",
+    "wall_s": 6.0,
+    "slm_input_tok_tiktoken": 508,
+    "slm_output_tok_tiktoken": 112,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 77,
+        "tiktoken_input": 210,
+        "tiktoken_output": 76,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Single Number\n\nGiven a **non-empty**\u00a0array of integers `nums`, every element appears *twice* except for one. Find that single one.\n\nYou must\u00a0implement a solution with a linear runtime complexity and use\u00a0only constant\u00a0extra space.\n\n\u00a0\n\nExample 1:\n\n**Input:** nums = [2,2,1]\n\n**Output:** 1\n\nExample 2:\n\n**Input:** nums = [4,1,2,1,2]\n\n**Output:** 4\n\nExample 3:\n\n**Input:** nums = [1]\n\n**Output:** 1\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= nums.length <= 3 * 10^4`\n\t- `-3 * 10^4 <= nums[i] <= 3 * 10^4`\n\t- Each element in the array appears twice except for one element which appears only once.",
+        "result_text": "- Use bitwise XOR operation to find the single number: `XOR` of all numbers will cancel out duplicates since each duplicated number will appear twice, leaving just the unique number.\n- Iterate through the list and apply XOR operation to keep track of the unique number.\n- Utilize the property that `a ^ a = 0` and `a ^ 0 = a`.",
+        "started_at": 1783186462.140216,
+        "finished_at": 1783186464.047733
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 37,
+        "tiktoken_input": 298,
+        "tiktoken_output": 36,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Single Number\n\nGiven a **non-empty**\u00a0array of integers `nums`, every element appears *twice* except for one. Find that single one.\n\nYou must\u00a0implement a solution with a linear runtime complexity and use\u00a0only constant\u00a0extra space.\n\n\u00a0\n\nExample 1:\n\n**Input:** nums = [2,2,1]\n\n**Output:** 1\n\nExample 2:\n\n**Input:** nums = [4,1,2,1,2]\n\n**Output:** 4\n\nExample 3:\n\n**Input:** nums = [1]\n\n**Output:** 1\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= nums.length <= 3 * 10^4`\n\t- `-3 * 10^4 <= nums[i] <= 3 * 10^4`\n\t- Each element in the array appears twice except for one element which appears only once.\n\nALGORITHM SKETCH:\n- Use bitwise XOR operation to find the single number: `XOR` of all numbers will cancel out duplicates since each duplicated number will appear twice, leaving just the unique number.\n- Iterate through the list and apply XOR operation to keep track of the unique number.\n- Utilize the property that `a ^ a = 0` and `a ^ 0 = a`.",
+        "result_text": "```python\ndef singleNumber(nums: List[int]) -> int:\n    result = 0\n    for num in nums:\n        result ^= num\n    return result\n```",
+        "started_at": 1783186464.5584462,
+        "finished_at": 1783186465.877725
+      }
+    ],
+    "final_code": "```python\ndef singleNumber(nums: List[int]) -> int:\n    result = 0\n    for num in nums:\n        result ^= num\n    return result\n```"
+  },
+  {
+    "slug": "move-zeroes",
+    "title": "Move Zeroes",
+    "difficulty": "Easy",
+    "run_id": "93b4ce71454c",
+    "wall_s": 6.0,
+    "slm_input_tok_tiktoken": 473,
+    "slm_output_tok_tiktoken": 168,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 88,
+        "tiktoken_input": 187,
+        "tiktoken_output": 87,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Move Zeroes\n\nGiven an integer array `nums`, move all `0`'s to the end of it while maintaining the relative order of the non-zero elements.\n\n**Note** that you must do this in-place without making a copy of the array.\n\n\u00a0\n\nExample 1:\n**Input:** nums = [0,1,0,3,12]\n**Output:** [1,3,12,0,0]\nExample 2:\n**Input:** nums = [0]\n**Output:** [0]\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= nums.length <= 10^4`\n\t- `-2^31 <= nums[i] <= 2^31 - 1`\n\n\u00a0\n**Follow up:** Could you minimize the total number of operations done?",
+        "result_text": "- Use two pointers, one for iteration (`i`) and one for placing non-zero elements (`j`).\n- Iterate through the array with `i`, and whenever a non-zero element is found at position `nums[j]`, swap it with `nums[i]`.\n- Increment `j` to ensure all zero elements are moved to the end.\n- Decrement `i` after each iteration until it reaches or before `j`.",
+        "started_at": 1783186468.1644192,
+        "finished_at": 1783186470.277313
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 82,
+        "tiktoken_input": 286,
+        "tiktoken_output": 81,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Move Zeroes\n\nGiven an integer array `nums`, move all `0`'s to the end of it while maintaining the relative order of the non-zero elements.\n\n**Note** that you must do this in-place without making a copy of the array.\n\n\u00a0\n\nExample 1:\n**Input:** nums = [0,1,0,3,12]\n**Output:** [1,3,12,0,0]\nExample 2:\n**Input:** nums = [0]\n**Output:** [0]\n\n\u00a0\n\n**Constraints:**\n\n\t- `1 <= nums.length <= 10^4`\n\t- `-2^31 <= nums[i] <= 2^31 - 1`\n\n\u00a0\n**Follow up:** Could you minimize the total number of operations done?\n\nALGORITHM SKETCH:\n- Use two pointers, one for iteration (`i`) and one for placing non-zero elements (`j`).\n- Iterate through the array with `i`, and whenever a non-zero element is found at position `nums[j]`, swap it with `nums[i]`.\n- Increment `j` to ensure all zero elements are moved to the end.\n- Decrement `i` after each iteration until it reaches or before `j`.",
+        "result_text": "```python\ndef move_zeroes(nums):\n    j = 0\n    for i in range(len(nums)):\n        if nums[i] != 0:\n            nums[j], nums[i] = nums[i], nums[j]\n            j += 1\n```\n\nThis function modifies the input list `nums` in-place to move all zeros to the end while maintaining the order of non-zero elements.",
+        "started_at": 1783186470.967978,
+        "finished_at": 1783186473.076997
+      }
+    ],
+    "final_code": "```python\ndef move_zeroes(nums):\n    j = 0\n    for i in range(len(nums)):\n        if nums[i] != 0:\n            nums[j], nums[i] = nums[i], nums[j]\n            j += 1\n```\n\nThis function modifies the input list `nums` in-place to move all zeros to the end while maintaining the order of non-zero elements."
+  },
+  {
+    "slug": "reverse-linked-list",
+    "title": "Reverse Linked List",
+    "difficulty": "Easy",
+    "run_id": "24b86fb178e5",
+    "wall_s": 6.0,
+    "slm_input_tok_tiktoken": 531,
+    "slm_output_tok_tiktoken": 225,
+    "nodes": [
+      {
+        "id": "sketch",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 142,
+        "tiktoken_input": 189,
+        "tiktoken_output": 141,
+        "prompt_rendered": "Describe the algorithm to solve the following LeetCode problem in 3-5 concise bullet points. No code, no preamble.\n\nPROBLEM: Reverse Linked List\n\nGiven the `head` of a singly linked list, reverse the list, and return *the reversed list*.\n\n\u00a0\n\nExample 1:\n\n**Input:** head = [1,2,3,4,5]\n**Output:** [5,4,3,2,1]\n\nExample 2:\n\n**Input:** head = [1,2]\n**Output:** [2,1]\n\nExample 3:\n\n**Input:** head = []\n**Output:** []\n\n\u00a0\n\n**Constraints:**\n\n\t- The number of nodes in the list is the range `[0, 5000]`.\n\t- `-5000 <= Node.val <= 5000`\n\n\u00a0\n\n**Follow up:** A linked list can be reversed either iteratively or recursively. Could you implement both?",
+        "result_text": "- Identify three pointers: `prev` as null to start, `current` pointing to the head of the list initially, and `next` storing the next node temporarily.\n- Traverse through the list, for each iteration, set the `next` pointer to the current node's next (effectively skipping the current node), then point the current node's next to its previous value (`prev`).\n- Update the pointers: move `prev` one step forward to be the current node, and `current` to the temporary stored node.\n- Continue until `current` reaches null, at which point all nodes have been reversed.\n- Handle edge cases where the list is empty or has only one element.",
+        "started_at": 1783186474.18681,
+        "finished_at": 1783186477.230371
+      },
+      {
+        "id": "solve",
+        "model": "qwen2.5:3b",
+        "eval_count_ollama": 85,
+        "tiktoken_input": 342,
+        "tiktoken_output": 84,
+        "prompt_rendered": "Write a single Python function that solves the LeetCode problem below. Follow the given algorithm sketch. Return ONLY code inside a ```python``` block, no explanation.\n\nPROBLEM: Reverse Linked List\n\nGiven the `head` of a singly linked list, reverse the list, and return *the reversed list*.\n\n\u00a0\n\nExample 1:\n\n**Input:** head = [1,2,3,4,5]\n**Output:** [5,4,3,2,1]\n\nExample 2:\n\n**Input:** head = [1,2]\n**Output:** [2,1]\n\nExample 3:\n\n**Input:** head = []\n**Output:** []\n\n\u00a0\n\n**Constraints:**\n\n\t- The number of nodes in the list is the range `[0, 5000]`.\n\t- `-5000 <= Node.val <= 5000`\n\n\u00a0\n\n**Follow up:** A linked list can be reversed either iteratively or recursively. Could you implement both?\n\nALGORITHM SKETCH:\n- Identify three pointers: `prev` as null to start, `current` pointing to the head of the list initially, and `next` storing the next node temporarily.\n- Traverse through the list, for each iteration, set the `next` pointer to the current node's next (effectively skipping the current node), then point the current node's next to its previous value (`prev`).\n- Update the pointers: move `prev` one step forward to be the current node, and `current` to the temporary stored node.\n- Continue until `current` reaches null, at which point all nodes have been reversed.\n- Handle edge cases where the list is empty or has only one element.",
+        "result_text": "```python\nclass ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef reverseList(head: ListNode) -> ListNode:\n    prev, current = None, head\n    while current:\n        next_temp = current.next\n        current.next = prev\n        prev = current\n        current = next_temp\n    return prev\n```",
+        "started_at": 1783186477.736445,
+        "finished_at": 1783186480.0149739
+      }
+    ],
+    "final_code": "```python\nclass ListNode:\n    def __init__(self, val=0, next=None):\n        self.val = val\n        self.next = next\n\ndef reverseList(head: ListNode) -> ListNode:\n    prev, current = None, head\n    while current:\n        next_temp = current.next\n        current.next = prev\n        prev = current\n        current = next_temp\n    return prev\n```"
+  }
+]

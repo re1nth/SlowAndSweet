@@ -1,0 +1,121 @@
+{
+  "rows": [
+    {
+      "slug": "valid-parentheses",
+      "title": "Valid Parentheses",
+      "difficulty": "Easy",
+      "case1_solo_in_tok": 242,
+      "case2_mixture_in_tok": 168,
+      "delta_tok": 74,
+      "reduction_pct": 30.6,
+      "sketch_tok": 106,
+      "statement_tok": 210
+    },
+    {
+      "slug": "merge-two-sorted-lists",
+      "title": "Merge Two Sorted Lists",
+      "difficulty": "Easy",
+      "case1_solo_in_tok": 237,
+      "case2_mixture_in_tok": 163,
+      "delta_tok": 74,
+      "reduction_pct": 31.2,
+      "sketch_tok": 100,
+      "statement_tok": 204
+    },
+    {
+      "slug": "maximum-subarray",
+      "title": "Maximum Subarray",
+      "difficulty": "Medium",
+      "case1_solo_in_tok": 268,
+      "case2_mixture_in_tok": 170,
+      "delta_tok": 98,
+      "reduction_pct": 36.6,
+      "sketch_tok": 108,
+      "statement_tok": 236
+    },
+    {
+      "slug": "climbing-stairs",
+      "title": "Climbing Stairs",
+      "difficulty": "Easy",
+      "case1_solo_in_tok": 207,
+      "case2_mixture_in_tok": 191,
+      "delta_tok": 16,
+      "reduction_pct": 7.7,
+      "sketch_tok": 128,
+      "statement_tok": 174
+    },
+    {
+      "slug": "best-time-to-buy-and-sell-stock",
+      "title": "Best Time to Buy and Sell Stock",
+      "difficulty": "Easy",
+      "case1_solo_in_tok": 289,
+      "case2_mixture_in_tok": 189,
+      "delta_tok": 100,
+      "reduction_pct": 34.6,
+      "sketch_tok": 123,
+      "statement_tok": 253
+    },
+    {
+      "slug": "contains-duplicate",
+      "title": "Contains Duplicate",
+      "difficulty": "Easy",
+      "case1_solo_in_tok": 211,
+      "case2_mixture_in_tok": 122,
+      "delta_tok": 89,
+      "reduction_pct": 42.2,
+      "sketch_tok": 61,
+      "statement_tok": 180
+    },
+    {
+      "slug": "product-of-array-except-self",
+      "title": "Product of Array Except Self",
+      "difficulty": "Medium",
+      "case1_solo_in_tok": 297,
+      "case2_mixture_in_tok": 128,
+      "delta_tok": 169,
+      "reduction_pct": 56.9,
+      "sketch_tok": 64,
+      "statement_tok": 263
+    },
+    {
+      "slug": "single-number",
+      "title": "Single Number",
+      "difficulty": "Easy",
+      "case1_solo_in_tok": 210,
+      "case2_mixture_in_tok": 137,
+      "delta_tok": 73,
+      "reduction_pct": 34.8,
+      "sketch_tok": 76,
+      "statement_tok": 179
+    },
+    {
+      "slug": "move-zeroes",
+      "title": "Move Zeroes",
+      "difficulty": "Easy",
+      "case1_solo_in_tok": 187,
+      "case2_mixture_in_tok": 149,
+      "delta_tok": 38,
+      "reduction_pct": 20.3,
+      "sketch_tok": 87,
+      "statement_tok": 155
+    },
+    {
+      "slug": "reverse-linked-list",
+      "title": "Reverse Linked List",
+      "difficulty": "Easy",
+      "case1_solo_in_tok": 189,
+      "case2_mixture_in_tok": 203,
+      "delta_tok": -14,
+      "reduction_pct": -7.4,
+      "sketch_tok": 141,
+      "statement_tok": 157
+    }
+  ],
+  "totals": {
+    "case1_solo_in_tok": 2337,
+    "case2_mixture_in_tok": 1620,
+    "delta_tok": 717,
+    "reduction_pct": 30.7
+  },
+  "notes": "Tokens sent TO Claude Code only. Case 1 = full problem statement. Case 2 = SLM-generated algorithm sketch (the SLM's own token cost is not counted, since it's offloaded to the local pool). Both tokenized with tiktoken cl100k_base as a shared proxy for Claude token counts."
+}
