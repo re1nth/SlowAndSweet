@@ -38,6 +38,15 @@ def _record_run_metric(run: "PlanRun", terminal_status: str) -> None:
     """
     try:
         from slowandsweet import state  # type: ignore
+    except ImportError:
+        import sys as _sys
+        repo_pkg = Path(__file__).resolve().parent.parent / "slowandsweet"
+        if (repo_pkg / "slowandsweet" / "state.py").exists():
+            _sys.path.insert(0, str(repo_pkg))
+        try:
+            from slowandsweet import state  # type: ignore
+        except Exception:  # noqa: BLE001
+            return
     except Exception:  # noqa: BLE001
         return
     try:
@@ -47,12 +56,23 @@ def _record_run_metric(run: "PlanRun", terminal_status: str) -> None:
         wall_ms = None
         if run.finished_at is not None:
             wall_ms = int((run.finished_at - run.created_at) * 1000)
+        # Counterfactual: what would it have cost had the frontier model
+        # produced these leaves itself, serially, in one response? Output
+        # volume is assumed comparable (SLMs handle mechanical rewrites
+        # without inflation), and 25 ms/token approximates a frontier
+        # model's steady-state output rate (~40 tok/s).
+        estimated_solo_tokens = slm_tokens_out or None
+        estimated_solo_wall_ms = (
+            slm_tokens_out * 25 if slm_tokens_out else None
+        )
         status = "delegated" if terminal_status == "done" else "failed"
         state.record_call(
             call_id=run.run_id,
             status=status,
             slm_tokens_out=slm_tokens_out or None,
             wall_ms=wall_ms,
+            estimated_solo_tokens=estimated_solo_tokens,
+            estimated_solo_wall_ms=estimated_solo_wall_ms,
         )
     except Exception:  # noqa: BLE001
         return
