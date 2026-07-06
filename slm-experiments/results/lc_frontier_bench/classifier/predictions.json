@@ -1,0 +1,102 @@
+[
+  {
+    "label": "lc:valid-parentheses",
+    "actual_reduction_pct": 30.6,
+    "actual_class": 1,
+    "predicted_reduction_pct": 27.1,
+    "predicted_class": 0,
+    "predicted_prob_worth_decomposing": 0.436,
+    "reg_correct_direction": true,
+    "cls_correct": false
+  },
+  {
+    "label": "lc:merge-two-sorted-lists",
+    "actual_reduction_pct": 31.2,
+    "actual_class": 1,
+    "predicted_reduction_pct": 4.8,
+    "predicted_class": 0,
+    "predicted_prob_worth_decomposing": 0.438,
+    "reg_correct_direction": false,
+    "cls_correct": false
+  },
+  {
+    "label": "lc:maximum-subarray",
+    "actual_reduction_pct": 36.6,
+    "actual_class": 1,
+    "predicted_reduction_pct": 30.2,
+    "predicted_class": 1,
+    "predicted_prob_worth_decomposing": 0.515,
+    "reg_correct_direction": true,
+    "cls_correct": true
+  },
+  {
+    "label": "lc:climbing-stairs",
+    "actual_reduction_pct": 7.7,
+    "actual_class": 0,
+    "predicted_reduction_pct": 11.4,
+    "predicted_class": 1,
+    "predicted_prob_worth_decomposing": 0.529,
+    "reg_correct_direction": true,
+    "cls_correct": false
+  },
+  {
+    "label": "lc:best-time-to-buy-and-sell-stock",
+    "actual_reduction_pct": 34.6,
+    "actual_class": 1,
+    "predicted_reduction_pct": 26.3,
+    "predicted_class": 0,
+    "predicted_prob_worth_decomposing": 0.471,
+    "reg_correct_direction": true,
+    "cls_correct": false
+  },
+  {
+    "label": "lc:contains-duplicate",
+    "actual_reduction_pct": 42.2,
+    "actual_class": 1,
+    "predicted_reduction_pct": 37.5,
+    "predicted_class": 1,
+    "predicted_prob_worth_decomposing": 0.542,
+    "reg_correct_direction": true,
+    "cls_correct": true
+  },
+  {
+    "label": "lc:product-of-array-except-self",
+    "actual_reduction_pct": 56.9,
+    "actual_class": 1,
+    "predicted_reduction_pct": 29.5,
+    "predicted_class": 1,
+    "predicted_prob_worth_decomposing": 0.527,
+    "reg_correct_direction": true,
+    "cls_correct": true
+  },
+  {
+    "label": "lc:single-number",
+    "actual_reduction_pct": 34.8,
+    "actual_class": 1,
+    "predicted_reduction_pct": 36.9,
+    "predicted_class": 1,
+    "predicted_prob_worth_decomposing": 0.542,
+    "reg_correct_direction": true,
+    "cls_correct": true
+  },
+  {
+    "label": "lc:move-zeroes",
+    "actual_reduction_pct": 20.3,
+    "actual_class": 1,
+    "predicted_reduction_pct": 33.9,
+    "predicted_class": 1,
+    "predicted_prob_worth_decomposing": 0.52,
+    "reg_correct_direction": true,
+    "cls_correct": true
+  },
+  {
+    "label": "lc:reverse-linked-list",
+    "actual_reduction_pct": -7.4,
+    "actual_class": 0,
+    "predicted_reduction_pct": 15.3,
+    "predicted_class": 1,
+    "predicted_prob_worth_decomposing": 0.512,
+    "reg_correct_direction": false,
+    "cls_correct": false
+  }
+]

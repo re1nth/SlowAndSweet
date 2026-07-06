@@ -1,0 +1,27 @@
+{
+  "n": 10,
+  "threshold_pct": 15.0,
+  "class_balance": {
+    "decompose": 8,
+    "solo": 2
+  },
+  "constant": {
+    "mae_pp": 13.13,
+    "binary_acc": 0.8
+  },
+  "length": {
+    "mae_pp": 12.69,
+    "pearson_r": 0.5,
+    "binary_acc": 0.7
+  },
+  "hand": {
+    "mae_pp": 12.74,
+    "pearson_r": 0.622,
+    "binary_acc": 0.6
+  },
+  "minilm": {
+    "mae_pp": 11.88,
+    "pearson_r": 0.514,
+    "binary_acc": 0.5
+  }
+}

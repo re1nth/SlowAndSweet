@@ -1,0 +1,11 @@
+{
+  "n_real": 10,
+  "n_synthetic_anchors": 7,
+  "threshold_pct": 15.0,
+  "regression_mae_pp": 11.88,
+  "regression_pearson_r": 0.514,
+  "classification_accuracy": 0.5,
+  "model": "sentence-transformers/all-MiniLM-L6-v2 (22M params)",
+  "head": "sklearn LinearRegression + LogisticRegression",
+  "cv": "leave-one-out on bench examples; synthetic anchors always in train"
+}
