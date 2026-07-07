@@ -30,7 +30,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "slm-deploy"))
 from validate import collect_deployments, load_yaml_docs  # noqa: E402
 
-from router import choose_model  # noqa: E402
+from router import choose_arm, choose_model  # noqa: E402
 from planner import Plan, PlanError, PlanRegistry, PlanRun, PlanRunner  # noqa: E402
 import ui  # noqa: E402
 
@@ -212,6 +212,12 @@ def make_handler(d: Dispatcher, registry: PlanRegistry):
                 except (PlanError, KeyError, FileNotFoundError) as e:
                     self._json(400, {"error": f"{type(e).__name__}: {e}"})
                     return
+                # Consult the router (no-op unless SLM_ROUTER_URL is set); the
+                # planner reads the stash at feedback time.
+                try:
+                    choose_arm(plan.description or plan.plan_id)
+                except Exception:
+                    pass
                 run = _start_plan_run(plan, d, registry)
                 self._json(202, {"run_id": run.run_id, "plan_id": plan.plan_id})
                 return
