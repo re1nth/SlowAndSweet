@@ -14,6 +14,7 @@ to a Dispatcher, polling for results, and unlocking dependents.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import threading
@@ -74,6 +75,95 @@ def _record_run_metric(run: "PlanRun", terminal_status: str) -> None:
             estimated_solo_tokens=estimated_solo_tokens,
             estimated_solo_wall_ms=estimated_solo_wall_ms,
         )
+    except Exception:  # noqa: BLE001
+        return
+
+    try:
+        _report_router_feedback(
+            run,
+            slm_tokens_out=slm_tokens_out,
+            wall_ms=wall_ms,
+            estimated_solo_tokens=estimated_solo_tokens,
+            estimated_solo_wall_ms=estimated_solo_wall_ms,
+        )
+    except Exception:  # noqa: BLE001
+        return
+
+
+def _router_prompt_for(run: "PlanRun") -> str:
+    # `plan.description` is what choose_arm() sees when the plan is dispatched
+    # -- it's the user-facing summary that stands in for "what would have been
+    # sent solo". Fall back to the first node's prompt template if empty.
+    desc = (run.plan.description or "").strip()
+    if desc:
+        return desc
+    first = run.plan.nodes[0] if run.plan.nodes else None
+    return (first or {}).get("prompt", "")
+
+
+def _report_router_feedback(
+    run: "PlanRun",
+    slm_tokens_out: int,
+    wall_ms: int | None,
+    estimated_solo_tokens: int | None,
+    estimated_solo_wall_ms: int | None,
+) -> None:
+    import os
+    if not os.environ.get("SLM_ROUTER_URL"):
+        return
+
+    import router as _router
+    prompt = _router_prompt_for(run)
+    if not prompt:
+        return
+
+    stashed = _router.get_stashed_decision(prompt)
+    if not stashed:
+        return
+
+    explore = _router._load_explore_module()
+    if explore is None:
+        return
+
+    # TODO: composer_tokens_actual should be the size of the composer prompt
+    # actually sent to Claude Code. The queue doesn't run the composer arm
+    # itself yet, so we proxy with slm_tokens_out (aggregate SLM output ~=
+    # what would be fed into the composer). Refine when composer path lands.
+    composer_tokens_actual = slm_tokens_out or 0
+    if estimated_solo_tokens and estimated_solo_tokens > 0:
+        observed_reduction_pct = (
+            (estimated_solo_tokens - composer_tokens_actual)
+            / estimated_solo_tokens
+            * 100.0
+        )
+    else:
+        observed_reduction_pct = None
+
+    wall_ms_saved = None
+    if estimated_solo_wall_ms is not None and wall_ms is not None:
+        wall_ms_saved = estimated_solo_wall_ms - wall_ms
+
+    prompt_hash = "sha256:" + hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+    record = {
+        "decision_id": stashed.get("decision_id"),
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "prompt_hash": prompt_hash,
+        "prompt_len_tok": len(prompt.split()),
+        "decision_made": "mixture",
+        "policy": stashed.get("policy"),
+        "head_version": stashed.get("head_version"),
+        "outcome": {
+            "solo_tokens_estimated": estimated_solo_tokens,
+            "composer_tokens_actual": composer_tokens_actual or None,
+            "observed_reduction_pct": observed_reduction_pct,
+            "wall_ms_slm_dag": wall_ms,
+            "wall_ms_saved_vs_solo": wall_ms_saved,
+            "quality_verdict": None,
+            "quality_source": "none",
+        },
+    }
+    try:
+        explore.report_feedback(record)
     except Exception:  # noqa: BLE001
         return
 

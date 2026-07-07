@@ -1,0 +1,25 @@
+encoder:
+  model: sentence-transformers/all-MiniLM-L6-v2
+  max_tokens: 512
+
+policy:
+  quality_floor: 0.7
+  cost_floor_pct: 20.0
+  confidence_floor: 0.5
+  epsilon: 0.10
+
+train:
+  min_records: 40
+  min_quality_labels: 20
+  holdout_fraction: 0.2
+  seed: 7
+
+paths:
+  heads_dir: heads
+  head_pointer: heads/HEAD
+  feedback_log: feedback.jsonl
+  metrics_log: metrics.jsonl
+
+server:
+  host: 127.0.0.1
+  port: 8090
