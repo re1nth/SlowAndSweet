@@ -74,7 +74,7 @@ system as a whole) has already made.
 
 ```
    ┌──────────┐   POST /route         ┌────────────────────────────┐
-   │ caller   │──────────────────────►│  slm-router (port 8090)    │
+   │ caller   │──────────────────────►│  slm-router (port 8092)    │
    │ (slm-    │◄──────────────────────│                            │
    │  queue,  │  {decision,           │  MiniLM encoder (frozen)   │
    │  plugin, │   predicted_          │      │                     │
@@ -508,7 +508,7 @@ head has learned something legitimate, or a bug is being masked.
 
 **Phase 1: same-box, subprocess-managed.** The router is a Python
 process launched next to `slm-queue/server.py`. Both processes read the
-same `slms.yaml`. Router listens on `127.0.0.1:8090`. The queue's
+same `slms.yaml`. Router listens on `127.0.0.1:8092` — 8080 is the queue's HTTP server, 8090 is its MCP server. The queue's
 router integration is behind an env var (`SLM_ROUTER_URL`), falling
 back to the current keyword classifier when unset. This is the shape
 that ships first.

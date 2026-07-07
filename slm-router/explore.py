@@ -15,7 +15,7 @@ import urllib.error
 import urllib.request
 
 
-_DEFAULT_URL = "http://127.0.0.1:8090"
+_DEFAULT_URL = "http://127.0.0.1:8092"
 
 
 def _base_url(override: str | None = None) -> str | None:

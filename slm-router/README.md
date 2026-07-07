@@ -28,8 +28,8 @@ slm-router/
 ```
 python -m venv .venv
 .venv/bin/pip install -r slm-router/requirements.txt
-.venv/bin/python slm-router/server.py --port 8090 &
-curl -s -X POST http://127.0.0.1:8090/route \
+.venv/bin/python slm-router/server.py --port 8092 &
+curl -s -X POST http://127.0.0.1:8092/route \
   -H 'Content-Type: application/json' \
   -d '{"prompt": "What is 2 + 2?"}'
 ```

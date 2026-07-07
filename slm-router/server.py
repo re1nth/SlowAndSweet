@@ -405,7 +405,7 @@ def build_server(config_path: Path, port_override: int | None) -> tuple[Threadin
     config = _load_config(config_path)
     server_cfg = config.get("server", {}) or {}
     host = server_cfg.get("host", "127.0.0.1")
-    port = port_override if port_override is not None else int(server_cfg.get("port", 8090))
+    port = port_override if port_override is not None else int(server_cfg.get("port", 8092))
 
     state = RouterState(config, config_path)
     handler = type("BoundRouterHandler", (RouterHandler,), {"state": state})
