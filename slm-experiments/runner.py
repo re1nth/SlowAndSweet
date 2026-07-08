@@ -14,9 +14,14 @@ to `_ARM_REGISTRY` and updating the reviewer protocol.
 from __future__ import annotations
 
 import concurrent.futures as cf
+import hashlib
 import json
+import os
 import random
+import secrets
+import sys
 import time
+import urllib.request
 from dataclasses import asdict
 from pathlib import Path
 from typing import Iterable
@@ -34,6 +39,80 @@ from reviewer import review, review_nway
 
 CASES_DIR = Path(__file__).resolve().parent / "cases"
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
+
+
+_WINNER_TO_VERDICT = {"solo": "A", "mixture": "B", "tie": "tie"}
+_TIKTOKEN_ENC = None
+
+
+def _count_tokens(text: str) -> int:
+    global _TIKTOKEN_ENC
+    if not text:
+        return 0
+    if _TIKTOKEN_ENC is None:
+        try:
+            import tiktoken  # type: ignore
+            _TIKTOKEN_ENC = tiktoken.get_encoding("cl100k_base")
+        except Exception:  # noqa: BLE001
+            _TIKTOKEN_ENC = False
+    if _TIKTOKEN_ENC and _TIKTOKEN_ENC is not False:
+        return len(_TIKTOKEN_ENC.encode(text))
+    return len(text.split())
+
+
+def _post_router_feedback(case: dict, arms_results: dict, verdict_dict: dict, run_id: str) -> None:
+    """POST a quality-labeled feedback record to slm-router. Gated on SLM_ROUTER_URL;
+    swallows every error — a bad POST must never take down an experiment run."""
+    url = os.environ.get("SLM_ROUTER_URL")
+    if not url:
+        return
+
+    solo = arms_results.get("solo")
+    mix = arms_results.get("mixture")
+    if solo is None or mix is None or solo.error or mix.error:
+        return
+
+    winner = verdict_dict.get("winner", "skipped")
+    verdict = _WINNER_TO_VERDICT.get(winner)  # None for skipped
+
+    solo_in = int(solo.frontier.input_tokens or 0)
+    mix_in = int(mix.frontier.input_tokens or 0)
+    reduction = ((solo_in - mix_in) / solo_in * 100.0) if solo_in > 0 else None
+
+    prompt = case.get("solo_prompt", "") or ""
+    prompt_hash = "sha256:" + hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+    record = {
+        "decision_id": f"exp_{run_id}_{case['id']}_{secrets.token_hex(4)}",
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "prompt_hash": prompt_hash,
+        "prompt_text": prompt,
+        "prompt_len_tok": _count_tokens(prompt),
+        "decision_made": "mixture",
+        "policy": "experiment",
+        "head_version": "experiment",
+        "outcome": {
+            "solo_tokens_estimated": solo_in,
+            "composer_tokens_actual": mix_in,
+            "observed_reduction_pct": reduction,
+            "wall_ms_slm_dag": int((mix.wall_seconds or 0.0) * 1000),
+            "wall_ms_saved_vs_solo": int(((solo.wall_seconds or 0.0) - (mix.wall_seconds or 0.0)) * 1000),
+            "quality_verdict": verdict,
+            "quality_source": "reviewer_shadow",
+        },
+    }
+    try:
+        req = urllib.request.Request(
+            url.rstrip("/") + "/feedback",
+            data=json.dumps(record).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        token = os.environ.get("SLM_ROUTER_TOKEN")
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
+        urllib.request.urlopen(req, timeout=2.0).read()
+    except Exception as e:  # noqa: BLE001
+        print(f"  [case {case['id']}] router feedback POST failed: {e}", file=sys.stderr)
 
 
 def load_cases(case_ids: Iterable[str] | None = None) -> list[dict]:
@@ -59,6 +138,7 @@ def _run_one_case(
     rng: random.Random,
     *,
     include_prism: bool = True,
+    run_id: str = "",
 ) -> dict:
     """Run all arms concurrently, then review."""
     print(f"  [case {case['id']}] starting arms")
@@ -106,6 +186,9 @@ def _run_one_case(
     }
     for arm, res in arms_results.items():
         case_record[arm] = res.to_dict()
+
+    _post_router_feedback(case, arms_results, verdict_dict, run_id)
+
     return case_record
 
 
@@ -125,10 +208,10 @@ def run_experiment(
 
     t0 = time.time()
     if max_parallel_cases == 1:
-        case_results = [_run_one_case(c, frontier, slm, rng) for c in cases]
+        case_results = [_run_one_case(c, frontier, slm, rng, run_id=run_id) for c in cases]
     else:
         with cf.ThreadPoolExecutor(max_workers=max_parallel_cases) as pool:
-            futs = [pool.submit(_run_one_case, c, frontier, slm, rng) for c in cases]
+            futs = [pool.submit(_run_one_case, c, frontier, slm, rng, run_id=run_id) for c in cases]
             case_results = [f.result() for f in futs]
 
     totals = _aggregate(case_results)
