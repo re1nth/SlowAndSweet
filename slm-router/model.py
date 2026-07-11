@@ -41,6 +41,9 @@ class HeadMetadata:
     holdout_mae_pp: float | None = None
     holdout_pearson_r: float | None = None
     holdout_quality_acc: float | None = None
+    train_mae_pp: float | None = None
+    cv_mae_pp_mean: float | None = None
+    cv_mae_pp_std: float | None = None
     trained_at: float = field(default_factory=time.time)
     notes: str = ""
 

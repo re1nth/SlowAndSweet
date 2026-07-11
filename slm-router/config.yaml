@@ -1,3 +1,8 @@
+# Persistent state (feedback log, metrics log, heads, embedding cache,
+# train state, dashboard) lives here. Override with SLOWANDSWEET_HOME env
+# var. Paths under `paths:` resolve relative to this directory.
+data_dir: ~/.slowandsweet
+
 encoder:
   model: sentence-transformers/all-MiniLM-L6-v2
   max_tokens: 512
@@ -11,7 +16,9 @@ policy:
 train:
   min_records: 40
   min_quality_labels: 20
+  min_new_records_since_last_train: 10
   holdout_fraction: 0.2
+  k_folds: 5
   seed: 7
 
 paths:
@@ -19,6 +26,9 @@ paths:
   head_pointer: heads/HEAD
   feedback_log: feedback.jsonl
   metrics_log: metrics.jsonl
+  train_state: train_state.json
+  dashboard_html: dashboard.html
+  emb_cache: .emb_cache.npz
 
 server:
   host: 127.0.0.1

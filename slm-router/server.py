@@ -26,6 +26,7 @@ import yaml  # noqa: E402
 
 from heuristic_fallback import heuristic_decide  # noqa: E402
 from model import Decision, Encoder, Head, head_pointer_read  # noqa: E402
+from paths import ensure_data_dir, resolve_data_path  # noqa: E402
 from policy import decide as policy_decide  # noqa: E402
 
 
@@ -38,10 +39,12 @@ class RouterState:
         self.config = config
         self.config_path = config_path
 
+        ensure_data_dir(config, legacy_root=_HERE)
+
         paths_cfg = config.get("paths", {})
-        self.heads_dir = _resolve(_HERE, paths_cfg.get("heads_dir", "heads"))
-        self.head_pointer_path = _resolve(_HERE, paths_cfg.get("head_pointer", "heads/HEAD"))
-        self.feedback_path = _resolve(_HERE, paths_cfg.get("feedback_log", "feedback.jsonl"))
+        self.heads_dir = resolve_data_path(config, paths_cfg.get("heads_dir", "heads"))
+        self.head_pointer_path = resolve_data_path(config, paths_cfg.get("head_pointer", "heads/HEAD"))
+        self.feedback_path = resolve_data_path(config, paths_cfg.get("feedback_log", "feedback.jsonl"))
 
         self.encoder: Encoder | None = None
         self.encoder_error: str | None = None
@@ -234,11 +237,6 @@ class RouterState:
             "feedback_records_total": self._feedback_count,
             "uptime_s": round(time.time() - self._started_at, 3),
         }
-
-
-def _resolve(base: Path, p: str) -> Path:
-    pp = Path(p)
-    return pp if pp.is_absolute() else (base / pp)
 
 
 def _log(payload: dict[str, Any]) -> None:
