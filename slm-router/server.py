@@ -25,9 +25,17 @@ if str(_HERE) not in sys.path:
 import yaml  # noqa: E402
 
 from heuristic_fallback import heuristic_decide  # noqa: E402
-from model import Decision, Encoder, Head, head_pointer_read  # noqa: E402
+from model import (  # noqa: E402
+    Decision,
+    Encoder,
+    Head,
+    LeafDecision,
+    LeafHead,
+    head_pointer_read,
+)
 from paths import ensure_data_dir, resolve_data_path  # noqa: E402
 from policy import decide as policy_decide  # noqa: E402
+from policy import decide_leaf as policy_decide_leaf  # noqa: E402
 
 
 DECISION_CACHE_MAX = 10_000
@@ -45,6 +53,15 @@ class RouterState:
         self.heads_dir = resolve_data_path(config, paths_cfg.get("heads_dir", "heads"))
         self.head_pointer_path = resolve_data_path(config, paths_cfg.get("head_pointer", "heads/HEAD"))
         self.feedback_path = resolve_data_path(config, paths_cfg.get("feedback_log", "feedback.jsonl"))
+        self.leaf_heads_dir = resolve_data_path(
+            config, paths_cfg.get("leaf_heads_dir", "leaf_heads")
+        )
+        self.leaf_head_pointer_path = resolve_data_path(
+            config, paths_cfg.get("leaf_head_pointer", "leaf_heads/HEAD")
+        )
+        self.leaf_feedback_path = resolve_data_path(
+            config, paths_cfg.get("leaf_feedback_log", "leaf_feedback.jsonl")
+        )
 
         self.encoder: Encoder | None = None
         self.encoder_error: str | None = None
@@ -53,8 +70,14 @@ class RouterState:
         self._head_version: str | None = None
         self._head_pointer_mtime: float | None = None
 
+        self._leaf_head: LeafHead | None = None
+        self._leaf_head_version: str | None = None
+        self._leaf_head_pointer_mtime: float | None = None
+
         self._head_lock = threading.Lock()
+        self._leaf_head_lock = threading.Lock()
         self._feedback_lock = threading.Lock()
+        self._leaf_feedback_lock = threading.Lock()
         self._decisions_lock = threading.Lock()
         self._metrics_lock = threading.Lock()
 
@@ -71,6 +94,7 @@ class RouterState:
 
         self._load_encoder()
         self._maybe_reload_head(force=True)
+        self._maybe_reload_leaf_head(force=True)
 
     def _load_encoder(self) -> None:
         try:
@@ -138,9 +162,89 @@ class RouterState:
                 self._head = None
                 self._head_version = None
 
+    def _maybe_reload_leaf_head(self, force: bool = False) -> None:
+        pointer = self.leaf_head_pointer_path
+        try:
+            mtime = pointer.stat().st_mtime if pointer.exists() else None
+        except OSError:
+            mtime = None
+
+        if not force and mtime == self._leaf_head_pointer_mtime:
+            return
+
+        with self._leaf_head_lock:
+            if not force and mtime == self._leaf_head_pointer_mtime:
+                return
+            self._leaf_head_pointer_mtime = mtime
+
+            version = head_pointer_read(pointer) if pointer.exists() else None
+            if not version:
+                if self._leaf_head is not None:
+                    _log({"event": "leaf_head_unloaded", "reason": "pointer_missing"})
+                self._leaf_head = None
+                self._leaf_head_version = None
+                return
+
+            head_file = self.leaf_heads_dir / f"{version}.joblib"
+            if not head_file.exists():
+                _log({"event": "leaf_head_missing", "version": version, "path": str(head_file)})
+                self._leaf_head = None
+                self._leaf_head_version = None
+                return
+
+            try:
+                self._leaf_head = LeafHead.load(head_file)
+                self._leaf_head_version = version
+                _log({
+                    "event": "leaf_head_loaded",
+                    "version": version,
+                    "models": self._leaf_head.metadata.models,
+                })
+            except Exception as e:
+                _log({
+                    "event": "leaf_head_load_failed",
+                    "version": version,
+                    "error": f"{type(e).__name__}: {e}",
+                })
+                self._leaf_head = None
+                self._leaf_head_version = None
+
     def force_reload(self) -> str:
         self._maybe_reload_head(force=True)
+        self._maybe_reload_leaf_head(force=True)
         return self._head_version or "heuristic"
+
+    def route_leaf(
+        self, prompt: str, available: list[str] | None
+    ) -> tuple[LeafDecision | None, str | None]:
+        """Return (decision, error). error is set when no head is loaded or
+        the encoder is unavailable — callers can then fall back to the
+        queue's heuristic dispatcher."""
+        self._maybe_reload_leaf_head()
+        head = self._leaf_head
+        version = self._leaf_head_version
+
+        if head is None:
+            return None, "leaf head not loaded"
+        if self.encoder is None:
+            return None, "encoder unavailable"
+
+        try:
+            x = self.encoder.encode(prompt)
+            preds = head.predict(x)
+            decision = policy_decide_leaf(
+                preds,
+                head_version=version or "unknown",
+                available=available,
+            )
+        except ValueError as e:
+            return None, str(e)
+        except Exception as e:
+            _log({"event": "leaf_predict_failed", "error": f"{type(e).__name__}: {e}"})
+            return None, f"{type(e).__name__}: {e}"
+
+        decision.decision_id = f"l_{secrets.token_hex(6)}"
+        return decision, None
 
     def route(self, prompt: str) -> Decision:
         self._maybe_reload_head()
@@ -200,6 +304,13 @@ class RouterState:
                 f.write(line)
             self._feedback_count += 1
 
+    def append_leaf_feedback(self, record: dict[str, Any]) -> None:
+        line = json.dumps(record, separators=(",", ":"), ensure_ascii=False) + "\n"
+        with self._leaf_feedback_lock:
+            self.leaf_feedback_path.parent.mkdir(parents=True, exist_ok=True)
+            with self.leaf_feedback_path.open("a", encoding="utf-8") as f:
+                f.write(line)
+
     def known_decision(self, decision_id: str) -> bool:
         with self._decisions_lock:
             return decision_id in self._decisions
@@ -234,6 +345,7 @@ class RouterState:
             "prediction_latency_ms_p50": round(p50, 3),
             "prediction_latency_ms_p99": round(p99, 3),
             "head_version": head_version,
+            "leaf_head_version": self._leaf_head_version or "unloaded",
             "feedback_records_total": self._feedback_count,
             "uptime_s": round(time.time() - self._started_at, 3),
         }
@@ -304,8 +416,12 @@ class RouterHandler(BaseHTTPRequestHandler):
         try:
             if path == "/route":
                 self._handle_route()
+            elif path == "/route_leaf":
+                self._handle_route_leaf()
             elif path == "/feedback":
                 self._handle_feedback()
+            elif path == "/leaf_feedback":
+                self._handle_leaf_feedback()
             elif path == "/reload":
                 self._handle_reload()
             else:
@@ -362,6 +478,50 @@ class RouterHandler(BaseHTTPRequestHandler):
         })
         self._send_json(200, asdict(decision))
 
+    def _handle_route_leaf(self) -> None:
+        body = self._read_json_body()
+        if body is None:
+            self._send_json(400, {"error": "invalid JSON body"})
+            return
+        prompt = body.get("prompt")
+        if not isinstance(prompt, str) or not prompt:
+            self._send_json(400, {"error": "missing or empty 'prompt' field"})
+            return
+        available_raw = body.get("available")
+        available: list[str] | None
+        if available_raw is None:
+            available = None
+        elif isinstance(available_raw, list) and all(isinstance(x, str) for x in available_raw):
+            available = available_raw or None
+        else:
+            self._send_json(400, {"error": "'available' must be an array of strings"})
+            return
+
+        t0 = time.perf_counter()
+        decision, err = self.state.route_leaf(prompt, available)
+        latency_ms = (time.perf_counter() - t0) * 1000.0
+
+        if decision is None:
+            _log({
+                "event": "route_leaf_unavailable",
+                "path": "/route_leaf",
+                "error": err,
+                "latency_ms": round(latency_ms, 3),
+            })
+            self._send_json(503, {"error": err or "leaf routing unavailable"})
+            return
+
+        _log({
+            "event": "route_leaf",
+            "decision_id": decision.decision_id,
+            "path": "/route_leaf",
+            "model": decision.model,
+            "head_version": decision.head_version,
+            "policy": decision.policy,
+            "latency_ms": round(latency_ms, 3),
+        })
+        self._send_json(200, asdict(decision))
+
     def _handle_feedback(self) -> None:
         body = self._read_json_body()
         if body is None:
@@ -382,6 +542,38 @@ class RouterHandler(BaseHTTPRequestHandler):
             "decision_id": decision_id,
             "path": "/feedback",
             "known": known,
+        })
+        self._send_json(200, {"accepted": True})
+
+    def _handle_leaf_feedback(self) -> None:
+        body = self._read_json_body()
+        if body is None:
+            self._send_json(400, {"error": "invalid JSON body"})
+            return
+        prompt_text = body.get("prompt_text")
+        if not isinstance(prompt_text, str) or not prompt_text:
+            self._send_json(400, {"error": "missing 'prompt_text'"})
+            return
+        outcomes = body.get("outcomes")
+        if not isinstance(outcomes, dict) or not outcomes:
+            self._send_json(400, {"error": "missing/empty 'outcomes'"})
+            return
+        # Auto-fill prompt_hash and timestamp when the caller omitted them —
+        # keeps the queue-side wiring dumb.
+        if not body.get("prompt_hash"):
+            import hashlib
+            body["prompt_hash"] = "sha256:" + hashlib.sha256(
+                prompt_text.encode("utf-8")
+            ).hexdigest()
+        if not body.get("timestamp"):
+            body["timestamp"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        self.state.append_leaf_feedback(body)
+        _log({
+            "event": "leaf_feedback",
+            "path": "/leaf_feedback",
+            "policy": body.get("policy"),
+            "chosen_model": body.get("chosen_model"),
+            "n_outcomes": len(outcomes),
         })
         self._send_json(200, {"accepted": True})
 

@@ -144,3 +144,70 @@ def head_pointer_write(pointer_path: Path, version: str) -> None:
     tmp = p.with_suffix(p.suffix + ".tmp")
     tmp.write_text(version + "\n")
     tmp.replace(p)
+
+
+# ---------------------------------------------------------------------------
+# Leaf routing (M0): pick which local SLM should execute a plan leaf.
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class LeafDecision:
+    model: str                              # chosen SLM name
+    predicted_output_tokens: float          # min over available candidates
+    alternatives: dict[str, float]          # {other_model: predicted_output_tokens}
+    head_version: str
+    policy: str                             # "learned" | "heuristic"
+    decision_id: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class LeafHeadMetadata:
+    version: str = "v0"
+    models: list[str] = field(default_factory=list)   # ordered SLM names covered
+    n_train: int = 0
+    trained_at: float = field(default_factory=time.time)
+    notes: str = ""
+
+
+class LeafHead:
+    """Bundles one regressor per SLM (predicted output tokens) + metadata.
+
+    Predicting *per-SLM output tokens* rather than a single class label lets
+    the policy apply constraints at call time (available-SLM filter, later a
+    latency budget / quality floor) without retraining.
+    """
+
+    def __init__(
+        self,
+        regressors: dict[str, Any] | None = None,
+        metadata: LeafHeadMetadata | None = None,
+    ):
+        self.regressors = regressors or {}
+        self.metadata = metadata or LeafHeadMetadata()
+
+    def predict(self, x: np.ndarray) -> dict[str, float]:
+        x = x.reshape(1, -1)
+        return {name: float(reg.predict(x)[0]) for name, reg in self.regressors.items()}
+
+    def save(self, path: Path) -> None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        joblib.dump(
+            {
+                "regressors": self.regressors,
+                "metadata": asdict(self.metadata),
+            },
+            tmp,
+        )
+        tmp.replace(path)
+
+    @classmethod
+    def load(cls, path: Path) -> "LeafHead":
+        raw = joblib.load(Path(path))
+        meta = LeafHeadMetadata(**raw["metadata"])
+        return cls(regressors=raw["regressors"], metadata=meta)

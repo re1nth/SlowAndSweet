@@ -451,6 +451,14 @@ def main() -> int:
 
     config = _load_config(args.config)
     train_once(config, router_dir, args.force or args.force_promote)
+
+    # M1: chain the leaf-router retrain on the same schedule. Independent
+    # gate + state; failure here must not fail the arm-router run.
+    try:
+        import leaf_train  # local import; avoids cost when only train.py is imported
+        leaf_train.train_once(config, router_dir, args.force or args.force_promote)
+    except Exception as e:
+        print(f"leaf retrain skipped: {type(e).__name__}: {e}")
     return 0
 
 

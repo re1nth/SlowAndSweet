@@ -14,8 +14,11 @@ max replicas of any single model.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
+import os
 import queue
+import random
 import sys
 import threading
 import time
@@ -30,12 +33,25 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "slm-deploy"))
 from validate import collect_deployments, load_yaml_docs  # noqa: E402
 
-from router import choose_arm, choose_model  # noqa: E402
+from router import choose_arm, choose_model, post_leaf_feedback  # noqa: E402
 from planner import Plan, PlanError, PlanRegistry, PlanRun, PlanRunner  # noqa: E402
 import ui  # noqa: E402
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 PLANS_DIR = HERE / "plans"
+
+
+def _leaf_epsilon() -> float:
+    raw = os.environ.get("SLM_LEAF_EPSILON", "0.10")
+    try:
+        v = float(raw)
+    except ValueError:
+        return 0.10
+    return max(0.0, min(1.0, v))
+
+
+def _feedback_enabled() -> bool:
+    return bool(os.environ.get("SLM_ROUTER_URL"))
 
 
 class Dispatcher:
@@ -48,6 +64,13 @@ class Dispatcher:
         self.results: dict[str, dict] = {}
         self.lock = threading.Lock()
         self.workers: list[threading.Thread] = []
+        # Feedback + explore machinery. Background pool sized generously so
+        # ε-explore shadows for K models don't stall the caller path.
+        self._epsilon = _leaf_epsilon()
+        self._rng = random.Random()
+        self._feedback_pool = concurrent.futures.ThreadPoolExecutor(
+            max_workers=8, thread_name_prefix="leaf-feedback"
+        )
 
     def start_workers(self) -> None:
         for d in self.deployments:
@@ -80,6 +103,15 @@ class Dispatcher:
                 "submitted_at": time.time(),
             }
         self.queues[model].put((task_id, prompt))
+
+        # M1: schedule leaf feedback (and, for ε of leaves, shadow runs
+        # against every other deployed SLM). Silent no-op when the router
+        # service isn't configured.
+        if _feedback_enabled():
+            is_explore = self._epsilon > 0 and self._rng.random() < self._epsilon
+            self._feedback_pool.submit(
+                self._explore_and_feedback, task_id, prompt, model, is_explore
+            )
         return task_id, model
 
     def get(self, task_id: str) -> dict | None:
@@ -131,6 +163,91 @@ class Dispatcher:
                     })
             finally:
                 q.task_done()
+
+    # --- M1: leaf feedback + ε-explore -------------------------------------
+
+    def _await_task_result(
+        self, task_id: str, timeout_s: float = 600.0, poll_s: float = 0.1
+    ) -> dict | None:
+        """Poll the task table until the task is done/error/timeout.
+
+        Returns an outcome dict on success, None if the task errored or the
+        poll timed out — we only emit feedback for successful primaries.
+        """
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            with self.lock:
+                r = self.results.get(task_id)
+                if r is not None:
+                    status = r.get("status")
+                    if status == "done":
+                        started = r.get("started_at") or r.get("submitted_at") or 0
+                        finished = r.get("finished_at") or time.time()
+                        wall_ms = int(max(0.0, (finished - started) * 1000))
+                        return {
+                            "output_tokens": int(r.get("eval_count") or 0),
+                            "wall_ms": wall_ms,
+                            "error": None,
+                        }
+                    if status == "error":
+                        return None
+            time.sleep(poll_s)
+        return None
+
+    def _shadow_call(self, model: str, prompt: str) -> dict:
+        """Direct Ollama call bypassing the queue; measures per-model latency
+        and output tokens on the same prompt for ε-explore feedback."""
+        t0 = time.time()
+        try:
+            _text, eval_count = self._call_ollama(model, prompt)
+            return {
+                "output_tokens": int(eval_count),
+                "wall_ms": int((time.time() - t0) * 1000),
+                "error": None,
+            }
+        except Exception as e:  # noqa: BLE001
+            return {
+                "output_tokens": None,
+                "wall_ms": int((time.time() - t0) * 1000),
+                "error": f"{type(e).__name__}: {e}",
+            }
+
+    def _explore_and_feedback(
+        self, task_id: str, prompt: str, primary_model: str, is_explore: bool
+    ) -> None:
+        primary_outcome = self._await_task_result(task_id)
+        if primary_outcome is None:
+            return  # primary errored or timed out; skip feedback
+
+        outcomes: dict[str, dict] = {primary_model: primary_outcome}
+
+        if is_explore:
+            others = [m for m in self.models if m != primary_model]
+            if others:
+                futs = {
+                    m: self._feedback_pool.submit(self._shadow_call, m, prompt)
+                    for m in others
+                }
+                for m, fut in futs.items():
+                    try:
+                        outcomes[m] = fut.result(timeout=600)
+                    except Exception as e:  # noqa: BLE001
+                        outcomes[m] = {
+                            "output_tokens": None,
+                            "wall_ms": None,
+                            "error": f"{type(e).__name__}: {e}",
+                        }
+
+        record = {
+            "prompt_text": prompt,
+            "policy": "explore" if is_explore else "learned",
+            "chosen_model": primary_model,
+            "outcomes": outcomes,
+        }
+        try:
+            post_leaf_feedback(record)
+        except Exception:  # noqa: BLE001
+            pass  # never let feedback failures affect the request path
 
     def _call_ollama(self, model: str, prompt: str) -> tuple[str, int]:
         body = json.dumps({

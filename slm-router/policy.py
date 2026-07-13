@@ -8,7 +8,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from model import Decision
+from model import Decision, LeafDecision
 
 
 def decide(
@@ -73,6 +73,38 @@ def decide(
         predicted_reduction_pct=predicted_reduction_pct,
         predicted_quality_ok_prob=predicted_quality_ok_prob,
         confidence=confidence,
+        head_version=head_version,
+        policy="learned",
+    )
+
+
+def decide_leaf(
+    predictions: dict[str, float],
+    *,
+    head_version: str,
+    available: list[str] | None = None,
+) -> LeafDecision:
+    """Pick a leaf SLM given per-model predicted output tokens.
+
+    M0 policy: argmin over the available intersection. Later milestones
+    add a quality floor and a latency budget as constraints.
+    """
+    if not predictions:
+        raise ValueError("empty predictions")
+    if available:
+        allowed = set(available)
+        candidates = {m: v for m, v in predictions.items() if m in allowed}
+    else:
+        candidates = dict(predictions)
+    if not candidates:
+        raise ValueError(
+            "no overlap between requested `available` list and trained SLMs"
+        )
+    chosen = min(candidates, key=candidates.__getitem__)
+    return LeafDecision(
+        model=chosen,
+        predicted_output_tokens=candidates[chosen],
+        alternatives={m: v for m, v in candidates.items() if m != chosen},
         head_version=head_version,
         policy="learned",
     )
