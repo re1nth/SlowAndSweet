@@ -229,13 +229,19 @@ class RouterState:
         if self.encoder is None:
             return None, "encoder unavailable"
 
+        leaf_cfg = self.config.get("leaf") or {}
+        quality_floor = float(leaf_cfg.get("quality_floor", 0.0))
+
         try:
             x = self.encoder.encode(prompt)
             preds = head.predict(x)
+            quality_preds = head.predict_quality(x)
             decision = policy_decide_leaf(
                 preds,
                 head_version=version or "unknown",
                 available=available,
+                quality_predictions=quality_preds or None,
+                quality_floor=quality_floor,
             )
         except ValueError as e:
             return None, str(e)

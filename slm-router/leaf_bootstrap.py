@@ -26,7 +26,7 @@ from typing import Any
 
 import numpy as np
 import yaml
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import LogisticRegression, Ridge
 
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
@@ -179,7 +179,9 @@ def _preferred_for(category: str, available: list[str]) -> str:
     return available[0]
 
 
-def _synthesize(available: list[str], seed: int) -> tuple[list[str], dict[str, np.ndarray]]:
+def _synthesize(
+    available: list[str], seed: int
+) -> tuple[list[str], dict[str, np.ndarray], dict[str, np.ndarray]]:
     rng = random.Random(seed)
     np_rng = np.random.default_rng(seed)
 
@@ -191,21 +193,25 @@ def _synthesize(available: list[str], seed: int) -> tuple[list[str], dict[str, n
             prompts.append(p)
             preferred.append(pref)
 
-    # Shuffle the pairs together so the fit isn't order-biased.
     pairs = list(zip(prompts, preferred))
     rng.shuffle(pairs)
     prompts, preferred = [list(t) for t in zip(*pairs)]
 
     per_slm_targets: dict[str, np.ndarray] = {}
+    per_slm_quality: dict[str, np.ndarray] = {}
     for m in available:
         y = np.array(
             [LOW_TOKENS if pref == m else HIGH_TOKENS for pref in preferred],
             dtype=np.float32,
         )
         y = y + np_rng.normal(0.0, NOISE_STD, size=y.shape).astype(np.float32)
-        y = np.clip(y, 10.0, None)  # never predict fewer than 10 tokens
+        y = np.clip(y, 10.0, None)
         per_slm_targets[m] = y
-    return prompts, per_slm_targets
+        # Quality prior: preferred SLM on-category = good (1), others = poor (0).
+        per_slm_quality[m] = np.array(
+            [1 if pref == m else 0 for pref in preferred], dtype=np.int64
+        )
+    return prompts, per_slm_targets, per_slm_quality
 
 
 def bootstrap(config: dict[str, Any], seed: int, alpha: float) -> dict[str, Any]:
@@ -218,23 +224,40 @@ def bootstrap(config: dict[str, Any], seed: int, alpha: float) -> dict[str, Any]
     if not available:
         raise RuntimeError("config missing leaf.available_slms")
 
-    prompts, per_slm_targets = _synthesize(available, seed)
+    prompts, per_slm_targets, per_slm_quality = _synthesize(available, seed)
 
     encoder = Encoder()
     X = encoder.encode_batch(prompts)
 
     regressors: dict[str, Any] = {}
+    quality_classifiers: dict[str, Any] = {}
+    n_quality_train: dict[str, int] = {}
     for m in available:
         reg = Ridge(alpha=alpha, random_state=seed).fit(X, per_slm_targets[m])
         regressors[m] = reg
+        yq = per_slm_quality[m]
+        if len(set(yq.tolist())) >= 2:
+            # class_weight="balanced" compensates for the 1:3 positive:negative
+            # split baked into the synthetic labels (each SLM is "preferred"
+            # only for one of the four categories).
+            clf = LogisticRegression(
+                max_iter=1000, C=0.5, random_state=seed, class_weight="balanced"
+            ).fit(X, yq)
+            quality_classifiers[m] = clf
+            n_quality_train[m] = int(len(yq))
 
     meta = LeafHeadMetadata(
         version="v0",
         models=list(available),
         n_train=len(prompts),
-        notes="cold-start bootstrap from keyword-rule priors",
+        n_quality_train=n_quality_train,
+        notes="cold-start bootstrap from keyword-rule priors (cost + quality)",
     )
-    head = LeafHead(regressors=regressors, metadata=meta)
+    head = LeafHead(
+        regressors=regressors,
+        quality_classifiers=quality_classifiers,
+        metadata=meta,
+    )
 
     out_path = leaf_dir / "v0.joblib"
     head.save(out_path)
@@ -242,6 +265,7 @@ def bootstrap(config: dict[str, Any], seed: int, alpha: float) -> dict[str, Any]
 
     return {
         "n_train": len(prompts),
+        "n_quality_train": n_quality_train,
         "models": list(available),
         "out_path": str(out_path),
         "pointer": str(pointer),

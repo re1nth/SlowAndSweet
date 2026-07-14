@@ -40,6 +40,16 @@ import ui  # noqa: E402
 OLLAMA_URL = "http://localhost:11434/api/generate"
 PLANS_DIR = HERE / "plans"
 
+# Cap the output text sent in leaf feedback so the log doesn't grow unbounded.
+# 4000 chars ~= 1000 tokens, enough for a judge to score.
+LEAF_FEEDBACK_TEXT_CAP = 4000
+
+
+def _clip(s: str) -> str:
+    if not isinstance(s, str):
+        return s
+    return s if len(s) <= LEAF_FEEDBACK_TEXT_CAP else s[:LEAF_FEEDBACK_TEXT_CAP]
+
 
 def _leaf_epsilon() -> float:
     raw = os.environ.get("SLM_LEAF_EPSILON", "0.10")
@@ -187,6 +197,7 @@ class Dispatcher:
                         return {
                             "output_tokens": int(r.get("eval_count") or 0),
                             "wall_ms": wall_ms,
+                            "output_text": _clip(r.get("result") or ""),
                             "error": None,
                         }
                     if status == "error":
@@ -195,20 +206,22 @@ class Dispatcher:
         return None
 
     def _shadow_call(self, model: str, prompt: str) -> dict:
-        """Direct Ollama call bypassing the queue; measures per-model latency
-        and output tokens on the same prompt for ε-explore feedback."""
+        """Direct Ollama call bypassing the queue; measures per-model latency,
+        output tokens, and text on the same prompt for ε-explore feedback."""
         t0 = time.time()
         try:
-            _text, eval_count = self._call_ollama(model, prompt)
+            text, eval_count = self._call_ollama(model, prompt)
             return {
                 "output_tokens": int(eval_count),
                 "wall_ms": int((time.time() - t0) * 1000),
+                "output_text": _clip(text),
                 "error": None,
             }
         except Exception as e:  # noqa: BLE001
             return {
                 "output_tokens": None,
                 "wall_ms": int((time.time() - t0) * 1000),
+                "output_text": None,
                 "error": f"{type(e).__name__}: {e}",
             }
 

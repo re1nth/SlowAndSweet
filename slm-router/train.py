@@ -452,8 +452,22 @@ def main() -> int:
     config = _load_config(args.config)
     train_once(config, router_dir, args.force or args.force_promote)
 
-    # M1: chain the leaf-router retrain on the same schedule. Independent
-    # gate + state; failure here must not fail the arm-router run.
+    # M1/M2: chain the leaf-router pipeline on the same schedule. Reviewer
+    # runs first so the retrainer sees fresh labels; both are independent
+    # gates and neither is allowed to fail the arm-router run.
+    try:
+        import leaf_reviewer
+        summary = leaf_reviewer.run_once(config)
+        if summary.get("skipped"):
+            print(f"leaf reviewer skipped: {summary.get('reason')}")
+        else:
+            print(
+                f"leaf reviewer: scored {summary['n_scored']} rows "
+                f"({summary.get('n_failed', 0)} failed)"
+            )
+    except Exception as e:
+        print(f"leaf reviewer skipped: {type(e).__name__}: {e}")
+
     try:
         import leaf_train  # local import; avoids cost when only train.py is imported
         leaf_train.train_once(config, router_dir, args.force or args.force_promote)

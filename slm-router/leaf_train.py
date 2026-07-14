@@ -29,8 +29,8 @@ from typing import Any
 
 import numpy as np
 import yaml
-from sklearn.linear_model import Ridge
-from sklearn.metrics import mean_absolute_error
+from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.metrics import accuracy_score, mean_absolute_error
 from sklearn.model_selection import KFold
 
 _HERE = Path(__file__).resolve().parent
@@ -65,6 +65,28 @@ def _parse_ts(v: Any) -> float:
         except ValueError:
             return 0.0
     return 0.0
+
+
+def _load_quality_labels(path: Path) -> dict[tuple[str, str], bool]:
+    """Return {(prompt_hash, model): quality_good}. Last-write-wins."""
+    if not path.exists():
+        return {}
+    labels: dict[tuple[str, str], bool] = {}
+    with path.open() as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            ph = obj.get("prompt_hash")
+            m = obj.get("model")
+            qg = obj.get("quality_good")
+            if isinstance(ph, str) and isinstance(m, str) and isinstance(qg, bool):
+                labels[(ph, m)] = qg
+    return labels
 
 
 def _load_records(path: Path) -> list[LeafRecord]:
@@ -239,6 +261,7 @@ def train_once(config: dict, router_dir: Path, force: bool) -> dict:
     train_cfg = (config.get("leaf_train") or {})
 
     feedback_path = resolve_data_path(config, paths["leaf_feedback_log"])
+    quality_path = resolve_data_path(config, paths.get("leaf_quality_log", "leaf_quality.jsonl"))
     metrics_path = resolve_data_path(config, paths["metrics_log"])
     heads_dir = resolve_data_path(config, paths["leaf_heads_dir"])
     pointer_path = resolve_data_path(config, paths["leaf_head_pointer"])
@@ -252,10 +275,12 @@ def train_once(config: dict, router_dir: Path, force: bool) -> dict:
     min_records = int(train_cfg.get("min_records", 20))
     min_new = int(train_cfg.get("min_new_records_since_last_train", 10))
     min_records_per_slm = int(train_cfg.get("min_records_per_slm", 3))
+    min_quality_per_slm = int(train_cfg.get("min_quality_labels_per_slm", 8))
     holdout_frac = float(train_cfg.get("holdout_fraction", 0.2))
     k_folds = int(train_cfg.get("k_folds", 5))
     seed = int(train_cfg.get("seed", 7))
     alpha = float(train_cfg.get("ridge_alpha", 1.0))
+    logreg_c = float(train_cfg.get("logreg_c", 0.5))
 
     records = _load_records(feedback_path)
     n_total = len(records)
@@ -275,9 +300,12 @@ def train_once(config: dict, router_dir: Path, force: bool) -> dict:
 
     X = _embed_records(records, cache_path)
     incumbent = _load_incumbent(heads_dir, pointer_path)
+    quality_labels = _load_quality_labels(quality_path)
 
     regressors: dict[str, Any] = {}
+    quality_classifiers: dict[str, Any] = {}
     per_slm_metrics: dict[str, dict[str, Any]] = {}
+    per_slm_quality_train: dict[str, int] = {}
     trained_slms: list[str] = []
 
     for m in available:
@@ -326,6 +354,46 @@ def train_once(config: dict, router_dir: Path, force: bool) -> dict:
             "cv_mae_std": cv_std,
         }
 
+        # Quality classifier for this SLM: fit on rows where we have a
+        # (prompt_hash, model) label. Requires >= min_quality_per_slm and at
+        # least one of each class to fit.
+        q_rows: list[tuple[int, int]] = []
+        for i, tok in rows:
+            r = records[i]
+            label = quality_labels.get((r.prompt_hash, m))
+            if isinstance(label, bool):
+                q_rows.append((i, 1 if label else 0))
+        n_q = len(q_rows)
+        per_slm_quality_train[m] = n_q
+        per_slm_metrics[m]["n_quality_labels"] = n_q
+        if n_q >= min_quality_per_slm:
+            yq = np.array([lb for _, lb in q_rows], dtype=np.int64)
+            if len(set(yq.tolist())) >= 2:
+                Xq = X[np.array([i for i, _ in q_rows])]
+                q_train_idx, q_hold_idx = _split(n_q, holdout_frac, seed)
+                # class_weight="balanced" — feedback data will be skewed toward
+                # SLMs the router has been picking; keeps the classifier from
+                # collapsing to "everything is good" or "everything is poor".
+                clf = LogisticRegression(
+                    max_iter=1000,
+                    C=logreg_c,
+                    random_state=seed,
+                    class_weight="balanced",
+                ).fit(Xq[q_train_idx], yq[q_train_idx])
+                quality_classifiers[m] = clf
+                q_train_acc = float(accuracy_score(yq[q_train_idx], clf.predict(Xq[q_train_idx])))
+                q_hold_acc: float | None = None
+                if len(q_hold_idx):
+                    q_hold_acc = float(accuracy_score(yq[q_hold_idx], clf.predict(Xq[q_hold_idx])))
+                per_slm_metrics[m]["quality_train_acc"] = q_train_acc
+                per_slm_metrics[m]["quality_holdout_acc"] = q_hold_acc
+            else:
+                per_slm_metrics[m]["quality_skipped"] = "single_class"
+        elif incumbent is not None and m in incumbent.quality_classifiers:
+            # Not enough fresh labels; retain incumbent's classifier.
+            quality_classifiers[m] = incumbent.quality_classifiers[m]
+            per_slm_metrics[m]["quality_retained_from_incumbent"] = True
+
     if not regressors:
         print("no SLM had enough labeled records to fit; skipping.")
         return _emit_skip("no_slm_fit", metrics_path, state_path, state, n_total, n_new)
@@ -335,9 +403,14 @@ def train_once(config: dict, router_dir: Path, force: bool) -> dict:
         version=candidate_version,
         models=list(regressors.keys()),
         n_train=n_total,
+        n_quality_train=per_slm_quality_train,
         notes=f"retrained from {n_total} leaf records; trained={trained_slms}",
     )
-    head = LeafHead(regressors=regressors, metadata=meta)
+    head = LeafHead(
+        regressors=regressors,
+        quality_classifiers=quality_classifiers,
+        metadata=meta,
+    )
     out_path = heads_dir / f"{candidate_version}.joblib"
     head.save(out_path)
 

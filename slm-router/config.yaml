@@ -17,12 +17,24 @@ policy:
 # available_slms must match names the queue dispatcher actually has
 # workers for (defined in slm-deploy/slms.yaml). Names not in this list
 # get filtered out at inference time.
+#
+# M2: quality_floor gates the argmin by predicted P(quality good) per SLM.
+# 0.0 disables the gate; classifiers only fire once they're trained.
 leaf:
   available_slms:
     - smollm2:1.7b
     - gemma2:2b
     - llama3.2:3b
     - qwen2.5:3b
+  quality_floor: 0.5
+
+# M2 leaf reviewer: turns leaf outputs into quality labels used to fit the
+# per-SLM classifier. Skips cleanly when no ANTHROPIC_API_KEY is set.
+leaf_reviewer:
+  judge_model: claude-sonnet-4-6
+  score_threshold: 4        # rubric score >= this counts as "good"
+  batch_max: 200            # cap how many rows the reviewer scores per run
+  request_max_tokens: 300
 
 train:
   min_records: 40
@@ -37,11 +49,13 @@ train:
 leaf_train:
   min_records: 20
   min_records_per_slm: 3
+  min_quality_labels_per_slm: 8   # below this we skip the classifier for that SLM
   min_new_records_since_last_train: 10
   holdout_fraction: 0.2
   k_folds: 5
   seed: 7
   ridge_alpha: 1.0
+  logreg_c: 0.5
 
 paths:
   heads_dir: heads
@@ -54,6 +68,7 @@ paths:
   leaf_heads_dir: leaf_heads
   leaf_head_pointer: leaf_heads/HEAD
   leaf_feedback_log: leaf_feedback.jsonl
+  leaf_quality_log: leaf_quality.jsonl
   leaf_train_state: leaf_train_state.json
   leaf_emb_cache: .leaf_emb_cache.npz
 

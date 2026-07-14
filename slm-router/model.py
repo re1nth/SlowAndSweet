@@ -154,8 +154,10 @@ def head_pointer_write(pointer_path: Path, version: str) -> None:
 @dataclass
 class LeafDecision:
     model: str                              # chosen SLM name
-    predicted_output_tokens: float          # min over available candidates
+    predicted_output_tokens: float          # cost prediction for the chosen SLM
+    predicted_quality_prob: float | None    # P(quality good) for the chosen SLM
     alternatives: dict[str, float]          # {other_model: predicted_output_tokens}
+    alternatives_quality: dict[str, float]  # {other_model: predicted_quality_prob}
     head_version: str
     policy: str                             # "learned" | "heuristic"
     decision_id: str = ""
@@ -169,29 +171,55 @@ class LeafHeadMetadata:
     version: str = "v0"
     models: list[str] = field(default_factory=list)   # ordered SLM names covered
     n_train: int = 0
+    n_quality_train: dict[str, int] = field(default_factory=dict)  # per-SLM label count
     trained_at: float = field(default_factory=time.time)
     notes: str = ""
 
 
 class LeafHead:
-    """Bundles one regressor per SLM (predicted output tokens) + metadata.
+    """Bundles per-SLM regressors + classifiers + metadata.
 
-    Predicting *per-SLM output tokens* rather than a single class label lets
-    the policy apply constraints at call time (available-SLM filter, later a
-    latency budget / quality floor) without retraining.
+    Predicting *per-SLM outcomes separately* rather than a single class label
+    lets the policy apply constraints at call time (available-SLM filter,
+    quality floor, later a latency budget) without retraining.
+
+    - regressors[m]         : predicts output_tokens on MiniLM(prompt)
+    - quality_classifiers[m]: predicts P(quality good) on the same vector,
+                              where "good" means the reviewer scored the SLM's
+                              output above the configured threshold.
+
+    Either dict may be empty for a given SLM: cost-only serving degrades to
+    unconditional argmin; quality-only never happens (we always need cost).
     """
 
     def __init__(
         self,
         regressors: dict[str, Any] | None = None,
+        quality_classifiers: dict[str, Any] | None = None,
         metadata: LeafHeadMetadata | None = None,
     ):
         self.regressors = regressors or {}
+        self.quality_classifiers = quality_classifiers or {}
         self.metadata = metadata or LeafHeadMetadata()
 
     def predict(self, x: np.ndarray) -> dict[str, float]:
         x = x.reshape(1, -1)
         return {name: float(reg.predict(x)[0]) for name, reg in self.regressors.items()}
+
+    def predict_quality(self, x: np.ndarray) -> dict[str, float]:
+        """P(quality good | prompt) per SLM. Empty dict if no classifier fit."""
+        if not self.quality_classifiers:
+            return {}
+        x = x.reshape(1, -1)
+        out: dict[str, float] = {}
+        for name, clf in self.quality_classifiers.items():
+            try:
+                out[name] = float(clf.predict_proba(x)[0, 1])
+            except Exception:
+                # Single-class classifier (all one label) — treat as fully-confident.
+                pred = clf.predict(x)[0]
+                out[name] = float(pred)
+        return out
 
     def save(self, path: Path) -> None:
         path = Path(path)
@@ -200,6 +228,7 @@ class LeafHead:
         joblib.dump(
             {
                 "regressors": self.regressors,
+                "quality_classifiers": self.quality_classifiers,
                 "metadata": asdict(self.metadata),
             },
             tmp,
@@ -210,4 +239,9 @@ class LeafHead:
     def load(cls, path: Path) -> "LeafHead":
         raw = joblib.load(Path(path))
         meta = LeafHeadMetadata(**raw["metadata"])
-        return cls(regressors=raw["regressors"], metadata=meta)
+        return cls(
+            regressors=raw["regressors"],
+            # Backwards-compat: pre-M2 heads don't have this key.
+            quality_classifiers=raw.get("quality_classifiers") or {},
+            metadata=meta,
+        )
