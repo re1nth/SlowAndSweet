@@ -1,19 +1,17 @@
 """Static HTML dashboard for router training metrics.
 
 Reads metrics.jsonl from the data dir and writes a single self-contained
-HTML file (Chart.js from CDN, all data inlined) covering:
+HTML file (Chart.js from CDN, all data inlined). Two sections:
 
-- Headline strip: current head, latest holdout / CV / train MAE, overfitting
-  gap, total records, last run outcome.
-- MAE timeline: train vs 5-fold CV (with std band) vs holdout across runs.
-- Pearson r and quality accuracy timelines.
-- Training set size over time.
-- Per-version holdout MAE bar chart, highlighting the currently-promoted
-  version.
-- Recent runs table.
+- Arm router (solo vs mixture): headline strip, MAE timeline (train / CV
+  band / holdout), Pearson r + quality-acc timeline, training set size,
+  per-version bars, recent runs table.
+- Leaf router (which local SLM for each subtask): headline strip, per-SLM
+  cost MAE and quality-acc timelines, latest per-SLM breakdown (train /
+  CV / holdout side-by-side), recent runs table.
 
-The train/CV gap is the overfitting signal: train_mae << cv_mae means the
-model memorized the training slice.
+The train/CV gap is the overfitting signal in both sections: train ≪ CV
+means the model memorized its training slice.
 
 Runnable both standalone (`python dashboard.py`) and from `train.py`
 (which calls `render_dashboard(config)` after each training attempt).
@@ -95,10 +93,19 @@ def render_dashboard(config: dict[str, Any]) -> Path:
     paths_cfg = config.get("paths") or {}
     metrics_path = resolve_data_path(config, paths_cfg.get("metrics_log", "metrics.jsonl"))
     state_path = resolve_data_path(config, paths_cfg.get("train_state", "train_state.json"))
+    leaf_state_path = resolve_data_path(
+        config, paths_cfg.get("leaf_train_state", "leaf_train_state.json")
+    )
     out_path = resolve_data_path(config, paths_cfg.get("dashboard_html", "dashboard.html"))
 
-    rows = _load_metrics(metrics_path)
+    all_rows = _load_metrics(metrics_path)
     state = _load_train_state(state_path)
+    leaf_state = _load_train_state(leaf_state_path)
+    leaf_slms = list((config.get("leaf") or {}).get("available_slms") or [])
+
+    # Arm-router entries pre-date the `component` tag, so absence == arm.
+    rows = [r for r in all_rows if r.get("component") != "leaf"]
+    leaf_rows_all = [r for r in all_rows if r.get("component") == "leaf"]
 
     # Only chart runs that actually trained; skip runs = insufficient_records / insufficient_new_records
     trained = [r for r in rows if r.get("candidate_version") is not None]
@@ -155,6 +162,76 @@ def render_dashboard(config: dict[str, Any]) -> Path:
     recent = list(reversed(rows[-20:]))
     table_rows_html = "\n".join(_row_html(r) for r in recent) or _empty_row_html()
 
+    # ------ Leaf section ------
+    leaf_trained = [r for r in leaf_rows_all if r.get("candidate_version") is not None]
+    leaf_labels = [_fmt_ts(r.get("timestamp")) for r in leaf_trained]
+    leaf_versions = [r.get("candidate_version") for r in leaf_trained]
+    leaf_promoted = [bool(r.get("promoted")) for r in leaf_trained]
+
+    per_slm_series: dict[str, dict[str, list[Any]]] = {
+        m: {
+            "train_mae": [],
+            "cv_mae_mean": [],
+            "holdout_mae": [],
+            "n_records": [],
+            "quality_train_acc": [],
+            "quality_holdout_acc": [],
+        }
+        for m in leaf_slms
+    }
+    for r in leaf_trained:
+        pm = r.get("per_slm_metrics") or {}
+        for m in leaf_slms:
+            slm = pm.get(m) or {}
+            per_slm_series[m]["train_mae"].append(slm.get("train_mae"))
+            per_slm_series[m]["cv_mae_mean"].append(slm.get("cv_mae_mean"))
+            per_slm_series[m]["holdout_mae"].append(slm.get("holdout_mae"))
+            per_slm_series[m]["n_records"].append(slm.get("n_records"))
+            per_slm_series[m]["quality_train_acc"].append(slm.get("quality_train_acc"))
+            per_slm_series[m]["quality_holdout_acc"].append(slm.get("quality_holdout_acc"))
+
+    # Latest per-SLM breakdown (grouped bars: train / CV / holdout per SLM).
+    latest_leaf = leaf_trained[-1] if leaf_trained else None
+    latest_pm = (latest_leaf or {}).get("per_slm_metrics") or {}
+    latest_breakdown = {
+        "models": leaf_slms,
+        "train_mae": [(latest_pm.get(m) or {}).get("train_mae") for m in leaf_slms],
+        "cv_mae_mean": [(latest_pm.get(m) or {}).get("cv_mae_mean") for m in leaf_slms],
+        "holdout_mae": [(latest_pm.get(m) or {}).get("holdout_mae") for m in leaf_slms],
+    }
+
+    # Leaf headline numbers.
+    def _mean_of(xs: list[Any]) -> float | None:
+        vs = [v for v in xs if isinstance(v, (int, float))]
+        return sum(vs) / len(vs) if vs else None
+
+    latest_cost_mae = _mean_of([(latest_pm.get(m) or {}).get("holdout_mae") for m in leaf_slms])
+    latest_qual_acc = _mean_of([(latest_pm.get(m) or {}).get("quality_holdout_acc") for m in leaf_slms])
+    total_leaf_records = latest_leaf.get("n_train") if latest_leaf else 0
+    total_leaf_qual = sum(
+        (latest_pm.get(m) or {}).get("n_quality_labels") or 0 for m in leaf_slms
+    )
+
+    leaf_current_head = leaf_state.get("last_promoted_version") or "&mdash;"
+    leaf_last_run_ts = leaf_state.get("last_run_timestamp")
+    leaf_last_reason = leaf_state.get("last_run_reason") or "&mdash;"
+
+    leaf_data_blob = {
+        "labels": leaf_labels,
+        "versions": leaf_versions,
+        "promoted": leaf_promoted,
+        "models": leaf_slms,
+        "per_slm": per_slm_series,
+        "latest_breakdown": latest_breakdown,
+    }
+    leaf_data_json = json.dumps(leaf_data_blob, default=lambda o: None)
+
+    leaf_recent = list(reversed(leaf_rows_all[-20:]))
+    leaf_table_rows_html = (
+        "\n".join(_leaf_row_html(r, leaf_slms) for r in leaf_recent)
+        or _leaf_empty_row_html()
+    )
+
     html = _TEMPLATE.format(
         chart_js=CHART_JS_CDN,
         generated=_fmt_ts(time.time()),
@@ -171,6 +248,18 @@ def render_dashboard(config: dict[str, Any]) -> Path:
         recent_rows=table_rows_html,
         n_runs=len(rows),
         n_trained=len(trained),
+        # Leaf section
+        leaf_current_head=escape(str(leaf_current_head)),
+        leaf_records=escape(str(total_leaf_records if total_leaf_records is not None else 0)),
+        leaf_qual_labels=escape(str(total_leaf_qual)),
+        leaf_last_run=_fmt_ts(leaf_last_run_ts),
+        leaf_last_reason=escape(str(leaf_last_reason)),
+        leaf_cost_mae=_fmt(latest_cost_mae),
+        leaf_qual_acc=_fmt(latest_qual_acc),
+        leaf_data_json=leaf_data_json,
+        leaf_recent_rows=leaf_table_rows_html,
+        leaf_n_runs=len(leaf_rows_all),
+        leaf_n_trained=len(leaf_trained),
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html)
@@ -208,6 +297,44 @@ def _row_html(r: dict[str, Any]) -> str:
 
 def _empty_row_html() -> str:
     return '<tr><td colspan="11" class="muted">no training runs yet</td></tr>'
+
+
+def _leaf_row_html(r: dict[str, Any], slms: list[str]) -> str:
+    pm = r.get("per_slm_metrics") or {}
+    trained_here = r.get("trained_slms") or []
+    # Compact per-SLM cell: "smollm2 n=14 cv=92.5 qacc=0.75" for each trained SLM.
+    slm_cells: list[str] = []
+    for m in slms:
+        slm = pm.get(m) or {}
+        n = slm.get("n_records")
+        cv = slm.get("cv_mae_mean")
+        qacc = slm.get("quality_holdout_acc")
+        fresh = m in trained_here
+        cell = f"{escape(m.split(':')[0])}"
+        if n:
+            cell += f" n={n}"
+        if isinstance(cv, (int, float)):
+            cell += f" cv={cv:.1f}"
+        if isinstance(qacc, (int, float)):
+            cell += f" qacc={qacc:.2f}"
+        if not fresh and slm.get("retained_from_incumbent"):
+            cell += " (kept)"
+        slm_cells.append(cell)
+    return (
+        "<tr>"
+        f"<td>{_fmt_ts(r.get('timestamp'))}</td>"
+        f"<td>{escape(str(r.get('candidate_version') or '—'))}</td>"
+        f"<td>{escape(str(r.get('n_train') or 0))}</td>"
+        f"<td>{escape(str(r.get('n_new_records') or 0))}</td>"
+        f"<td class='wrap'>{'<br>'.join(slm_cells) if slm_cells else '—'}</td>"
+        f"<td>{'yes' if r.get('promoted') else 'no'}</td>"
+        f"<td>{escape(str(r.get('reason') or ''))}</td>"
+        "</tr>"
+    )
+
+
+def _leaf_empty_row_html() -> str:
+    return '<tr><td colspan="7" class="muted">no leaf training runs yet — waiting on feedback</td></tr>'
 
 
 _TEMPLATE = """<!doctype html>
@@ -256,12 +383,17 @@ _TEMPLATE = """<!doctype html>
   td.muted {{ color: var(--muted); text-align: center; }}
   .table-wrap {{ background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; }}
   .table-wrap h2 {{ font-size: 13px; margin: 0 0 12px 0; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }}
+  td.wrap {{ font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); }}
+  .section-title {{ font-size: 16px; font-weight: 600; margin: 32px 0 12px 0; padding-bottom: 6px; border-bottom: 1px solid var(--border); }}
 </style>
 </head>
 <body>
 
 <h1>slm-router training dashboard</h1>
-<div class="subtitle">Generated {generated} &middot; {n_runs} scheduler runs &middot; {n_trained} actual trainings</div>
+<div class="subtitle">Generated {generated}</div>
+
+<div class="section-title">Arm router — solo vs mixture</div>
+<div class="subtitle">{n_runs} scheduler runs &middot; {n_trained} actual trainings</div>
 
 <div class="grid">
   <div class="card">
@@ -331,6 +463,75 @@ _TEMPLATE = """<!doctype html>
     </thead>
     <tbody>
       {recent_rows}
+    </tbody>
+  </table>
+</div>
+
+<div class="section-title">Leaf router — which local SLM per subtask</div>
+<div class="subtitle">{leaf_n_runs} scheduler runs &middot; {leaf_n_trained} actual trainings</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="label">Current leaf head</div>
+    <div class="value">{leaf_current_head}</div>
+    <div class="footnote">Last run: {leaf_last_run} ({leaf_last_reason})</div>
+  </div>
+  <div class="card">
+    <div class="label">Feedback records</div>
+    <div class="value">{leaf_records}</div>
+    <div class="footnote">unique prompts in most recent leaf run</div>
+  </div>
+  <div class="card">
+    <div class="label">Quality labels</div>
+    <div class="value">{leaf_qual_labels}</div>
+    <div class="footnote">sum across SLMs, most recent leaf run</div>
+  </div>
+  <div class="card">
+    <div class="label">Mean cost holdout MAE</div>
+    <div class="value">{leaf_cost_mae}</div>
+    <div class="footnote">avg across trained SLMs, last run</div>
+  </div>
+  <div class="card">
+    <div class="label">Mean quality holdout acc</div>
+    <div class="value">{leaf_qual_acc}</div>
+    <div class="footnote">avg across trained SLMs, last run</div>
+  </div>
+</div>
+
+<div class="charts">
+  <div class="chart-panel">
+    <h2>Per-SLM holdout MAE across runs</h2>
+    <canvas id="leaf_cost_timeline"></canvas>
+    <div class="why">Cost-regressor holdout error per SLM over training runs. Divergent lines = SLMs learning at different rates from ε-explore data.</div>
+  </div>
+  <div class="chart-panel">
+    <h2>Per-SLM quality holdout accuracy</h2>
+    <canvas id="leaf_quality_timeline"></canvas>
+    <div class="why">Reviewer-verdict classifier's holdout accuracy per SLM. 0.5 = uninformed prior; watch for drift below.</div>
+  </div>
+  <div class="chart-panel">
+    <h2>Latest per-SLM MAE breakdown</h2>
+    <canvas id="leaf_breakdown"></canvas>
+    <div class="why">Train vs 5-fold CV vs holdout MAE for the most recent leaf training run. Big gaps between train and CV = per-SLM overfitting.</div>
+  </div>
+  <div class="chart-panel">
+    <h2>Per-version leaf promotion</h2>
+    <canvas id="leaf_versions"></canvas>
+    <div class="why">Green bars promoted, grey rejected. Height = mean of holdout MAE across SLMs in that candidate.</div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <h2>Recent leaf runs</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th><th>Version</th><th>N</th><th>New</th>
+        <th>Per-SLM</th><th>Promoted</th><th>Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      {leaf_recent_rows}
     </tbody>
   </table>
 </div>
@@ -411,6 +612,99 @@ _TEMPLATE = """<!doctype html>
           label: "Holdout MAE",
           data: DATA.holdout_mae,
           backgroundColor: DATA.promoted.map(p => p ? COLORS.promoted : COLORS.rejected),
+        }}]
+      }},
+      options: {{ plugins: {{ legend: {{ display: false }} }}, scales: {{ x: AXIS, y: AXIS }} }}
+    }});
+  }}
+
+  // ---- Leaf router charts ----------------------------------------------
+  const LEAF = {leaf_data_json};
+  const SLM_PALETTE = ["#55c37a", "#e4b350", "#4ea1ff", "#c07dd8", "#e57373", "#7fd0d1", "#d18f52", "#a6b1c2"];
+  const slmColor = (i) => SLM_PALETTE[i % SLM_PALETTE.length];
+
+  if (LEAF.labels.length === 0) {{
+    ["leaf_cost_timeline","leaf_quality_timeline","leaf_breakdown","leaf_versions"].forEach(id => {{
+      const el = document.getElementById(id);
+      if (el) el.replaceWith(Object.assign(document.createElement("div"), {{
+        textContent: "no leaf training runs yet — waiting on feedback",
+        style: "color:#8892a0;font-size:12px;padding:20px 0;text-align:center;"
+      }}));
+    }});
+  }} else {{
+    // Per-SLM holdout MAE timeline (one line per SLM).
+    new Chart(document.getElementById("leaf_cost_timeline"), {{
+      type: "line",
+      data: {{
+        labels: LEAF.labels,
+        datasets: LEAF.models.map((m, i) => ({{
+          label: m,
+          data: (LEAF.per_slm[m] || {{}}).holdout_mae || [],
+          borderColor: slmColor(i),
+          backgroundColor: slmColor(i),
+          tension: 0.2,
+          spanGaps: true,
+        }})),
+      }},
+      options: {{
+        plugins: {{ legend: LEGEND, tooltip: {{ mode: "index", intersect: false }} }},
+        scales: {{ x: AXIS, y: {{ ...AXIS, title: {{ display: true, text: "MAE (tokens)", color: "#8892a0" }} }} }},
+        interaction: {{ mode: "nearest", axis: "x", intersect: false }},
+      }}
+    }});
+
+    // Per-SLM quality holdout accuracy timeline.
+    new Chart(document.getElementById("leaf_quality_timeline"), {{
+      type: "line",
+      data: {{
+        labels: LEAF.labels,
+        datasets: LEAF.models.map((m, i) => ({{
+          label: m,
+          data: (LEAF.per_slm[m] || {{}}).quality_holdout_acc || [],
+          borderColor: slmColor(i),
+          backgroundColor: slmColor(i),
+          tension: 0.2,
+          spanGaps: true,
+        }})),
+      }},
+      options: {{
+        plugins: {{ legend: LEGEND }},
+        scales: {{ x: AXIS, y: {{ ...AXIS, suggestedMin: 0, suggestedMax: 1 }} }},
+      }}
+    }});
+
+    // Latest per-SLM breakdown: train / CV / holdout as grouped bars.
+    new Chart(document.getElementById("leaf_breakdown"), {{
+      type: "bar",
+      data: {{
+        labels: LEAF.latest_breakdown.models,
+        datasets: [
+          {{ label: "Train MAE",   data: LEAF.latest_breakdown.train_mae,   backgroundColor: COLORS.train }},
+          {{ label: "CV MAE",      data: LEAF.latest_breakdown.cv_mae_mean, backgroundColor: COLORS.cv }},
+          {{ label: "Holdout MAE", data: LEAF.latest_breakdown.holdout_mae, backgroundColor: COLORS.holdout }},
+        ]
+      }},
+      options: {{
+        plugins: {{ legend: LEGEND, tooltip: {{ mode: "index", intersect: false }} }},
+        scales: {{ x: AXIS, y: AXIS }},
+      }}
+    }});
+
+    // Per-version summary: mean holdout MAE across SLMs, colored by promotion.
+    const perVersionMean = LEAF.labels.map((_, runIdx) => {{
+      const vals = LEAF.models
+        .map(m => (LEAF.per_slm[m]||{{}}).holdout_mae?.[runIdx])
+        .filter(v => typeof v === "number");
+      return vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+    }});
+    new Chart(document.getElementById("leaf_versions"), {{
+      type: "bar",
+      data: {{
+        labels: LEAF.versions,
+        datasets: [{{
+          label: "Mean holdout MAE",
+          data: perVersionMean,
+          backgroundColor: LEAF.promoted.map(p => p ? COLORS.promoted : COLORS.rejected),
         }}]
       }},
       options: {{ plugins: {{ legend: {{ display: false }} }}, scales: {{ x: AXIS, y: AXIS }} }}
