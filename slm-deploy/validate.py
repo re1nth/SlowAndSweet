@@ -170,6 +170,48 @@ def collect_deployments(docs: list[Any]) -> list[dict]:
     return out
 
 
+def deployment_scale(d: dict) -> tuple[int, int, int]:
+    """Return (initial, min, max) for a deployment.
+
+    Backwards compat: if replicas_min / replicas_max are absent, they default
+    to the fixed `replicas` value (i.e., no scaling).
+    """
+    spec = d.get("spec") or {}
+    initial = int(spec.get("replicas", 1))
+    lo = int(spec.get("replicas_min", initial))
+    hi = int(spec.get("replicas_max", initial))
+    if lo > hi:
+        raise ValueError(
+            f"deployment {d.get('metadata', {}).get('name', '?')}: "
+            f"replicas_min ({lo}) > replicas_max ({hi})"
+        )
+    initial = max(lo, min(hi, initial))
+    return initial, lo, hi
+
+
+AUTOSCALER_DEFAULTS: dict[str, Any] = {
+    "tick_interval_s": 10,
+    "scale_up_after_ticks": 3,        # depth over threshold for this many ticks
+    "scale_up_queue_threshold": 3,    # per-model queue depth that triggers a scale-up look
+    "scale_down_after_idle_ticks": 6, # empty queue for this many ticks in a row
+    "cooldown_s": 30,                 # min seconds between scale events per model
+    "max_total_replicas": 0,          # 0 = derive from sum of replicas_max at startup
+}
+
+
+def find_autoscaler_config(docs: list[Any]) -> dict[str, Any]:
+    """Return the SLMAutoScaler config from the doc list, filled with defaults."""
+    for d in docs:
+        if isinstance(d, dict) and d.get("kind") == "SLMAutoScaler":
+            spec = d.get("spec") or {}
+            merged = dict(AUTOSCALER_DEFAULTS)
+            for k, v in spec.items():
+                if k in merged and v is not None:
+                    merged[k] = v
+            return merged
+    return dict(AUTOSCALER_DEFAULTS)
+
+
 def find_node(docs: list[Any]) -> dict:
     for d in docs:
         if isinstance(d, dict) and d.get("kind") == "Node":
@@ -203,24 +245,33 @@ def main() -> int:
           f"allocatable mem={fmt_memory(cap_mem)}  cpu={fmt_cpu(cap_cpu)}  "
           f"gpu={cap_gpu}{' (shareable)' if gpu_shareable else ''}\n")
 
-    header = f"{'Deployment':<14} {'Model':<14} {'Repl':>4} {'mem/repl':>10} {'cpu/repl':>10} {'gpu/repl':>8}"
+    header = (
+        f"{'Deployment':<14} {'Model':<14} {'Repl':>10} {'mem/repl':>10} "
+        f"{'cpu/repl':>10} {'gpu/repl':>8}"
+    )
     print(header)
     print("-" * len(header))
     for d in deploys:
         spec = d["spec"]
         name = d["metadata"]["name"]
         model = spec["model"]
-        replicas = int(spec.get("replicas", 1))
+        initial, lo, hi = deployment_scale(d)
+        # Fit check uses the *worst-case* replica count so scale-up doesn't
+        # OOM the node. Ranges print as "min-max" when they differ, otherwise
+        # a single number preserves the pre-autoscaler display.
+        replicas_for_fit = hi
         req = spec["resources"]["requests"]
         m = parse_memory(req["memory"])
         c = parse_cpu(req["cpu"])
         g = parse_gpu(req.get("gpu", 0))
-        used_mem += m * replicas
-        used_cpu += c * replicas
-        used_gpu += g * replicas
+        used_mem += m * replicas_for_fit
+        used_cpu += c * replicas_for_fit
+        used_gpu += g * replicas_for_fit
         if g > max_per_replica_gpu:
             max_per_replica_gpu = g
-        print(f"{name:<14} {model:<14} {replicas:>4} {fmt_memory(m):>10} {fmt_cpu(c):>10} {g:>8}")
+        label = f"{initial}" if lo == hi else f"{initial} ({lo}-{hi})"
+        print(f"{name:<14} {model:<14} {label:>10} {fmt_memory(m):>10} "
+              f"{fmt_cpu(c):>10} {g:>8}")
 
     print()
     rows = [

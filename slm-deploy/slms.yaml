@@ -2,6 +2,11 @@
 # Resource numbers below are starting points informed by the peak RSS values
 # in resources.md; tune per workload. Each replica is one independently
 # loaded copy of the model (its own weights resident in memory).
+#
+# replicas / replicas_min / replicas_max:
+#   `replicas` is the initial worker count on queue startup.
+#   `replicas_min` / `replicas_max` bracket the autoscaler; both default to
+#   `replicas` (i.e., no scaling) when absent, preserving prior behavior.
 apiVersion: slowandsweet/v1
 kind: SLMDeployment
 metadata:
@@ -9,6 +14,8 @@ metadata:
 spec:
   model: smollm2:1.7b
   replicas: 2
+  replicas_min: 1
+  replicas_max: 3
   resources:
     requests:
       memory: 2Gi
@@ -60,6 +67,8 @@ metadata:
 spec:
   model: qwen2.5:3b
   replicas: 1
+  replicas_min: 1
+  replicas_max: 2
   resources:
     requests:
       memory: 4Gi
@@ -69,3 +78,23 @@ spec:
       memory: 7Gi
       cpu: 2000m
       gpu: 1
+---
+# Global autoscaler policy. Reactive on per-model queue depth:
+#   scale up when depth stays above scale_up_queue_threshold for
+#     scale_up_after_ticks consecutive ticks
+#   scale down when queue is empty for scale_down_after_idle_ticks
+#     consecutive ticks
+# Cooldown prevents flapping. max_total_replicas caps the whole pool
+# (one GPU serves all models via Ollama; unbounded scale = thrash).
+# max_total_replicas: 0 means "sum of replicas_max at startup".
+apiVersion: slowandsweet/v1
+kind: SLMAutoScaler
+metadata:
+  name: default
+spec:
+  tick_interval_s: 10
+  scale_up_queue_threshold: 3
+  scale_up_after_ticks: 3
+  scale_down_after_idle_ticks: 6
+  cooldown_s: 30
+  max_total_replicas: 0

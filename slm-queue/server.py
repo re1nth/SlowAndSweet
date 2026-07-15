@@ -31,11 +31,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "slm-deploy"))
-from validate import collect_deployments, load_yaml_docs  # noqa: E402
+from validate import (  # noqa: E402
+    collect_deployments,
+    deployment_scale,
+    find_autoscaler_config,
+    load_yaml_docs,
+)
 
 from router import choose_arm, choose_model, post_leaf_feedback  # noqa: E402
 from planner import Plan, PlanError, PlanRegistry, PlanRun, PlanRunner  # noqa: E402
+from autoscaler import AutoScaler  # noqa: E402
 import ui  # noqa: E402
+
+
+# Sentinel enqueued by remove_replica() to tell a worker to exit after its
+# next dequeue. Any value distinguishable from `(task_id, prompt)` tuples
+# works; we use a class instance for identity comparison safety.
+class _StopSignal:
+    __slots__ = ()
+_STOP = _StopSignal()
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 PLANS_DIR = HERE / "plans"
@@ -73,7 +87,13 @@ class Dispatcher:
         self.queues: dict[str, queue.Queue] = {m: queue.Queue() for m in self.models}
         self.results: dict[str, dict] = {}
         self.lock = threading.Lock()
-        self.workers: list[threading.Thread] = []
+        # Per-model worker state, populated by start_workers.
+        self.workers_by_model: dict[str, list[threading.Thread]] = {m: [] for m in self.models}
+        self.name_by_model: dict[str, str] = {}
+        # Autoscaler bounds. Same source of truth for the operator (slms.yaml)
+        # and the runtime (dispatcher).
+        self.scale_bounds: dict[str, tuple[int, int, int]] = {}  # model -> (initial, min, max)
+        self._replica_counter: dict[str, int] = {m: 0 for m in self.models}
         # Feedback + explore machinery. Background pool sized generously so
         # ε-explore shadows for K models don't stall the caller path.
         self._epsilon = _leaf_epsilon()
@@ -82,24 +102,75 @@ class Dispatcher:
             max_workers=8, thread_name_prefix="leaf-feedback"
         )
 
+    @property
+    def workers(self) -> list[threading.Thread]:
+        # Kept for compat with existing /status snapshot code.
+        out: list[threading.Thread] = []
+        for ts in self.workers_by_model.values():
+            out.extend(ts)
+        return out
+
     def start_workers(self) -> None:
         for d in self.deployments:
             model = d["spec"]["model"]
             name = d["metadata"]["name"]
-            n = int(d["spec"].get("replicas", 1))
-            for i in range(n):
-                t = threading.Thread(
-                    target=self._worker_loop,
-                    args=(model, i),
-                    name=f"worker-{name}-{i}",
-                    daemon=True,
-                )
-                t.start()
-                self.workers.append(t)
+            initial, lo, hi = deployment_scale(d)
+            self.name_by_model[model] = name
+            self.scale_bounds[model] = (initial, lo, hi)
+            for _ in range(initial):
+                self._spawn_replica(model)
         print(f"started {len(self.workers)} workers across {len(self.models)} models:")
         for d in self.deployments:
-            print(f"  {d['metadata']['name']:<10} model={d['spec']['model']:<14} "
-                  f"replicas={d['spec'].get('replicas', 1)}")
+            model = d["spec"]["model"]
+            initial, lo, hi = self.scale_bounds[model]
+            range_note = f"{initial}" if lo == hi else f"{initial} (min={lo}, max={hi})"
+            print(f"  {d['metadata']['name']:<10} model={model:<14} replicas={range_note}")
+
+    # ---- dynamic replica management --------------------------------------
+
+    def _spawn_replica(self, model: str) -> threading.Thread:
+        """Start a new worker thread for `model` and register it. Caller
+        should hold self.lock when doing so under autoscaler contention."""
+        name = self.name_by_model.get(model, model)
+        idx = self._replica_counter[model]
+        self._replica_counter[model] += 1
+        t = threading.Thread(
+            target=self._worker_loop,
+            args=(model, idx),
+            name=f"worker-{name}-{idx}",
+            daemon=True,
+        )
+        t.start()
+        self.workers_by_model[model].append(t)
+        return t
+
+    def add_replica(self, model: str) -> int:
+        """Add one worker to `model`. Returns the resulting replica count."""
+        with self.lock:
+            self._spawn_replica(model)
+            return len(self.workers_by_model[model])
+
+    def remove_replica(self, model: str) -> int:
+        """Signal one worker for `model` to exit after its next dequeue.
+
+        Returns the *target* (post-scale-down) replica count. Actual count
+        catches up once the worker picks up the sentinel — usually within
+        a tick, since scale-down only fires when the queue is empty.
+        """
+        with self.lock:
+            live = len(self.workers_by_model[model])
+        # STOP goes into the same queue; whichever worker pops it exits.
+        # No lock needed for queue.put — queue.Queue is thread-safe.
+        self.queues[model].put(_STOP)
+        return max(0, live - 1)
+
+    def replica_count(self, model: str) -> int:
+        with self.lock:
+            live = self.workers_by_model.get(model, [])
+            return sum(1 for t in live if t.is_alive())
+
+    def total_replicas(self) -> int:
+        return sum(self.replica_count(m) for m in self.models)
 
     def submit(self, prompt: str) -> tuple[str, str]:
         model = choose_model(prompt, self.models)
@@ -135,44 +206,63 @@ class Dispatcher:
             counts = {s: 0 for s in ("pending", "running", "done", "error")}
             for r in self.results.values():
                 counts[r["status"]] = counts.get(r["status"], 0) + 1
-            return {
+            replicas = {m: len(self.workers_by_model[m]) for m in self.models}
+            out = {
                 "models": self.models,
                 "queue_depths": depths,
+                "replicas": replicas,
                 "tasks_total": len(self.results),
                 "task_counts": counts,
-                "workers": len(self.workers),
+                "workers": sum(replicas.values()),
             }
+        scaler = getattr(self, "autoscaler", None)
+        if scaler is not None:
+            try:
+                out["autoscaler"] = scaler.state_snapshot()
+            except Exception as e:  # noqa: BLE001
+                out["autoscaler_error"] = f"{type(e).__name__}: {e}"
+        return out
 
     def _worker_loop(self, model: str, replica_idx: int) -> None:
         q = self.queues[model]
         worker_label = f"{model}#{replica_idx}"
-        while True:
-            task_id, prompt = q.get()
-            t0 = time.time()
+        me = threading.current_thread()
+        try:
+            while True:
+                item = q.get()
+                if item is _STOP:
+                    q.task_done()
+                    return
+                task_id, prompt = item
+                t0 = time.time()
+                with self.lock:
+                    self.results[task_id].update({
+                        "status": "running",
+                        "started_at": t0,
+                        "worker": worker_label,
+                    })
+                try:
+                    resp_text, eval_count = self._call_ollama(model, prompt)
+                    with self.lock:
+                        self.results[task_id].update({
+                            "status": "done",
+                            "result": resp_text,
+                            "eval_count": eval_count,
+                            "finished_at": time.time(),
+                        })
+                except Exception as e:  # noqa: BLE001
+                    with self.lock:
+                        self.results[task_id].update({
+                            "status": "error",
+                            "error": f"{type(e).__name__}: {e}",
+                            "finished_at": time.time(),
+                        })
+                finally:
+                    q.task_done()
+        finally:
             with self.lock:
-                self.results[task_id].update({
-                    "status": "running",
-                    "started_at": t0,
-                    "worker": worker_label,
-                })
-            try:
-                resp_text, eval_count = self._call_ollama(model, prompt)
-                with self.lock:
-                    self.results[task_id].update({
-                        "status": "done",
-                        "result": resp_text,
-                        "eval_count": eval_count,
-                        "finished_at": time.time(),
-                    })
-            except Exception as e:  # noqa: BLE001
-                with self.lock:
-                    self.results[task_id].update({
-                        "status": "error",
-                        "error": f"{type(e).__name__}: {e}",
-                        "finished_at": time.time(),
-                    })
-            finally:
-                q.task_done()
+                if me in self.workers_by_model.get(model, []):
+                    self.workers_by_model[model].remove(me)
 
     # --- M1: leaf feedback + ε-explore -------------------------------------
 
@@ -425,13 +515,26 @@ def main() -> int:
     ap.add_argument("--port", type=int, default=8080)
     args = ap.parse_args()
 
-    deployments = collect_deployments(load_yaml_docs(Path(args.slms)))
+    docs = load_yaml_docs(Path(args.slms))
+    deployments = collect_deployments(docs)
     if not deployments:
         print("no SLMDeployment docs found", file=sys.stderr)
         return 1
+    autoscaler_config = find_autoscaler_config(docs)
 
     d = Dispatcher(deployments)
     d.start_workers()
+
+    scaler = AutoScaler(d, autoscaler_config)
+    scaler.start()
+    print(
+        f"autoscaler: tick={scaler.tick_interval_s}s "
+        f"up_thresh={scaler.scale_up_queue_threshold} up_after={scaler.scale_up_after_ticks}t "
+        f"down_after={scaler.scale_down_after_idle_ticks}t "
+        f"cooldown={scaler.cooldown_s}s "
+        f"total_cap={scaler.max_total_replicas}"
+    )
+    d.autoscaler = scaler  # exposed on the dispatcher so /status can read state
 
     registry = PlanRegistry(PLANS_DIR)
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(d, registry))
