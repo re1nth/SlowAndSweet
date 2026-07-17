@@ -1,0 +1,14 @@
+[Unit]
+Description=Nightly trigger for the SlowAndSweet router retrainer
+Documentation=file://__REPO_DIR__/slm-router/README.md
+
+[Timer]
+# 03:00 local time nightly. If the machine was off at the trigger,
+# Persistent=true replays the missed fire on next boot/login. train.py
+# self-gates on new-record count, so an empty wake is a cheap no-op.
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+Unit=slowandsweet-router-train.service
+
+[Install]
+WantedBy=timers.target

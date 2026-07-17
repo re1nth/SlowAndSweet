@@ -56,6 +56,19 @@ Auth: set `SLM_ROUTER_TOKEN` in the environment to require `Authorization: Beare
 
 The server is safe to run in either state — it will simply degrade to the heuristic policy and report so via `/metrics`.
 
+## Scheduled retraining
+
+`train.py` is intended to be woken nightly. Install the scheduler via the
+OS-detecting wrapper:
+
+```sh
+./scripts/install-scheduler.sh   # macOS -> launchd, Linux -> systemd --user
+```
+
+Both back-ends fire at 03:00 local time and self-gate on new-record count,
+so a wake with no fresh feedback is a cheap no-op. Remove with
+`./scripts/uninstall-scheduler.sh`.
+
 ## See also
 
 - [`DESIGN.md`](./DESIGN.md) — full spec (schemas, versioning, cold start, counterfactual handling).

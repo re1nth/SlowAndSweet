@@ -1,0 +1,12 @@
+[Unit]
+Description=SlowAndSweet router head retrainer
+Documentation=file://__REPO_DIR__/slm-router/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=__REPO_DIR__
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=__PYTHON__ __TRAIN_PY__
+StandardOutput=append:__LOG_OUT__
+StandardError=append:__LOG_ERR__
+Nice=10

@@ -59,7 +59,8 @@ End-to-end install, macOS or Linux:
 
 ```sh
 # 1. One-time system deps
-brew install ollama                      # or: curl -fsSL https://ollama.com/install.sh | sh
+#    macOS:  brew install ollama
+#    Linux:  curl -fsSL https://ollama.com/install.sh | sh
 ollama serve &                           # in another terminal is fine
 
 # 2. Install the daemon CLI. Handles the state dir, the bearer token,
