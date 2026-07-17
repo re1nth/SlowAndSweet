@@ -412,10 +412,41 @@ class PlanRunner:
 class PlanRegistry:
     """Holds all PlanRuns in memory."""
 
+    STASH_TTL_S = 600.0  # 10 minutes; hook stashes plans just before frontier consumes them.
+
     def __init__(self, plans_dir: Path):
         self.plans_dir = plans_dir
         self.runs: dict[str, PlanRun] = {}
         self.lock = threading.Lock()
+        # stash_id -> (plan, expires_at). Populated by the UserPromptSubmit
+        # hook so the frontier can trigger a pre-decomposed plan via
+        # slm_run_stashed(stash_id) instead of re-emitting the whole DAG
+        # as tool arguments. Entries are one-shot (removed on pop) so a
+        # hostile session can't re-run the same plan twice.
+        self.stashes: dict[str, tuple[Plan, float]] = {}
+        self.stash_lock = threading.Lock()
+
+    def stash(self, plan: Plan) -> str:
+        stash_id = f"auto-{uuid.uuid4().hex[:12]}"
+        now = time.time()
+        with self.stash_lock:
+            # Opportunistic sweep: cheap, keeps the dict bounded.
+            expired = [k for k, (_, exp) in self.stashes.items() if exp <= now]
+            for k in expired:
+                del self.stashes[k]
+            self.stashes[stash_id] = (plan, now + self.STASH_TTL_S)
+        return stash_id
+
+    def pop_stash(self, stash_id: str) -> Plan | None:
+        now = time.time()
+        with self.stash_lock:
+            entry = self.stashes.pop(stash_id, None)
+        if entry is None:
+            return None
+        plan, expires_at = entry
+        if expires_at <= now:
+            return None
+        return plan
 
     def list_plan_files(self) -> list[str]:
         if not self.plans_dir.exists():

@@ -12,6 +12,11 @@ CALLS_JSONL = STATE_DIR / "calls.jsonl"
 # Env vars don't cross into the MCP server process, so a file is the
 # only reliable cross-process kill switch.
 DISABLED_FLAG = STATE_DIR / "disabled"
+# Softer kill switch: when present, the UserPromptSubmit auto-route hook
+# stops injecting delegation hints, but explicit /delegate + slm_submit_plan
+# still work. Useful when the router is misfiring but you want to keep
+# the manual path.
+AUTOROUTE_DISABLED_FLAG = STATE_DIR / "autoroute_disabled"
 
 
 def ensure_state_dir() -> Path:

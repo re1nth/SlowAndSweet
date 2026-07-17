@@ -24,6 +24,7 @@ if str(_HERE) not in sys.path:
 
 import yaml  # noqa: E402
 
+from decompose import DECOMPOSER_VERSION, decompose  # noqa: E402
 from heuristic_fallback import heuristic_decide  # noqa: E402
 from model import (  # noqa: E402
     Decision,
@@ -422,6 +423,8 @@ class RouterHandler(BaseHTTPRequestHandler):
         try:
             if path == "/route":
                 self._handle_route()
+            elif path == "/decompose":
+                self._handle_decompose()
             elif path == "/route_leaf":
                 self._handle_route_leaf()
             elif path == "/feedback":
@@ -483,6 +486,45 @@ class RouterHandler(BaseHTTPRequestHandler):
             "latency_ms": round(latency_ms, 3),
         })
         self._send_json(200, asdict(decision))
+
+    def _handle_decompose(self) -> None:
+        """Rule-based auto-route: does this prompt map to an SLM DAG?
+
+        Returns quickly (no encoder, no head). `decision` is 'mixture' iff a
+        rule matched and produced a plan; otherwise 'solo'. Callers (the
+        Claude Code UserPromptSubmit hook) inject the plan back into the
+        session as additional context.
+        """
+        body = self._read_json_body()
+        if body is None:
+            self._send_json(400, {"error": "invalid JSON body"})
+            return
+        prompt = body.get("prompt")
+        if not isinstance(prompt, str) or not prompt:
+            self._send_json(400, {"error": "missing or empty 'prompt' field"})
+            return
+
+        t0 = time.perf_counter()
+        plan, rule = decompose(prompt)
+        latency_ms = (time.perf_counter() - t0) * 1000.0
+
+        decision = "mixture" if plan is not None else "solo"
+        n_nodes = len(plan["nodes"]) if plan else 0
+        _log({
+            "event": "decompose",
+            "path": "/decompose",
+            "decision": decision,
+            "rule": rule,
+            "n_nodes": n_nodes,
+            "decomposer_version": DECOMPOSER_VERSION,
+            "latency_ms": round(latency_ms, 3),
+        })
+        self._send_json(200, {
+            "decision": decision,
+            "plan": plan,
+            "rule": rule,
+            "decomposer_version": DECOMPOSER_VERSION,
+        })
 
     def _handle_route_leaf(self) -> None:
         body = self._read_json_body()

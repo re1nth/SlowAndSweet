@@ -27,8 +27,21 @@ def _build_parser() -> argparse.ArgumentParser:
     ps = sub.add_parser("stats", help="show today's delegation totals")
     ps.add_argument("--json", action="store_true", help="emit machine-readable JSON")
 
-    sub.add_parser("disable", help="stop delegating; MCP server will refuse plans")
-    sub.add_parser("enable", help="re-enable delegation after `disable`")
+    p_disable = sub.add_parser(
+        "disable",
+        help="stop delegating; MCP server will refuse plans",
+    )
+    p_disable.add_argument(
+        "scope", nargs="?", default="all", choices=("all", "autoroute"),
+        help=(
+            "'all' (default) disables both auto-route and manual /delegate; "
+            "'autoroute' silences only the UserPromptSubmit hook"
+        ),
+    )
+    p_enable = sub.add_parser("enable", help="re-enable delegation after `disable`")
+    p_enable.add_argument(
+        "scope", nargs="?", default="all", choices=("all", "autoroute"),
+    )
 
     return p
 
@@ -46,10 +59,10 @@ def main(argv: list[str] | None = None) -> int:
         return stats_mod.run(as_json=args.json)
     if args.command == "disable":
         from slowandsweet import disable as disable_mod
-        return disable_mod.run_disable()
+        return disable_mod.run_disable(args.scope)
     if args.command == "enable":
         from slowandsweet import disable as disable_mod
-        return disable_mod.run_enable()
+        return disable_mod.run_enable(args.scope)
     # argparse with required=True guarantees we never get here.
     return 2
 

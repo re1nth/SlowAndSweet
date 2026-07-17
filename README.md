@@ -26,7 +26,12 @@ benefit from it.
    ┌─────────────────────────────────────────────────────────────────┐
    │  Claude Code session                                            │
    │   1. user prompt arrives                                        │
-   │   2. Claude authors a DAG plan (which leaves are mechanical?)   │
+   │   1a. UserPromptSubmit hook -> slm-router /decompose            │
+   │       - rule matches (multi-variant / for-each / summarize)     │
+   │         -> hook injects `[autoroute:mixture]` + ready-made DAG  │
+   │       - no match, router down, or /no-delegate prefix           │
+   │         -> hook stays silent (frontier answers solo)            │
+   │   2. Claude uses the injected DAG (or authors one manually)     │
    │   3. Claude calls MCP tool   slm_submit_plan(plan)              │
    │   6. Claude reads node results, synthesizes the final answer    │
    └────────────┬───────────────────────────────▲────────────────────┘
@@ -72,13 +77,15 @@ slowandsweet init
 #    and templates .mcp.json into ~/.claude/plugins/slowandsweet/.
 sh plugin/install.sh
 
-# 4. Start the two servers. (These will move under one process in a later
+# 4. Start the servers. (These will move under one process in a later
 #    revision — for now they're separate so each stays inspectable.)
-python3 slm-queue/server.py --port 8080 &
+python3 slm-queue/server.py    --port 8080 &
 python3 slm-queue/mcp_server.py --port 8090 &
+python3 slm-router/server.py   --port 8092 &    # required for auto-route
 
 # 5. Restart Claude Code. You now have:
 #    - the slm-batch subagent (Claude invokes it automatically on 3+ homogeneous items)
+#    - auto-route: UserPromptSubmit hook -> slm-router /decompose -> DAG hint
 #    - /delegate <task>, /slm-doctor, /slm-stats slash commands
 #    - a PostToolUse hook logging delegations to ~/.slowandsweet/calls.jsonl
 ```
@@ -86,9 +93,16 @@ python3 slm-queue/mcp_server.py --port 8090 &
 Verify with `slowandsweet doctor` — every check should be `OK`, with `queue
 server reachable` and `MCP server reachable` reflecting the running servers.
 
-**Kill switch.** `slowandsweet disable` writes `~/.slowandsweet/disabled`;
-the MCP tool refuses plans until you `slowandsweet enable`. No Claude
-restart needed. `slowandsweet stats` reports today's delegation totals.
+**Kill switches.**
+
+- `slowandsweet disable` writes `~/.slowandsweet/disabled`; the MCP tool
+  refuses plans **and** the auto-route hook goes quiet. Re-enable with
+  `slowandsweet enable`. No Claude restart needed.
+- `slowandsweet disable autoroute` silences only the auto-route hook;
+  manual `/delegate` still works. Re-enable with `slowandsweet enable autoroute`.
+- Prefix any single prompt with `/no-delegate ` to force solo for that turn.
+
+`slowandsweet stats` reports today's delegation totals.
 
 ## Components
 

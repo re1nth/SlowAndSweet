@@ -42,12 +42,13 @@ Auth: set `SLM_ROUTER_TOKEN` in the environment to require `Authorization: Beare
 
 ## Endpoints
 
-| Method | Path        | Purpose                                                                                     |
-| ------ | ----------- | ------------------------------------------------------------------------------------------- |
-| POST   | `/route`    | `{prompt, context?}` -> `Decision` JSON (see DESIGN §4.1). Attaches a fresh `decision_id`.  |
-| POST   | `/feedback` | Append one outcome record (DESIGN §4.2) to `feedback.jsonl`. Last-write-wins by `decision_id`. |
-| GET    | `/metrics`  | Rolling JSON: prediction counts by decision & policy, p50/p99 latency, uptime, head version. |
-| POST   | `/reload`   | Re-read `heads/HEAD` and swap in the named head. Also happens automatically on mtime change. |
+| Method | Path         | Purpose                                                                                     |
+| ------ | ------------ | ------------------------------------------------------------------------------------------- |
+| POST   | `/route`     | `{prompt, context?}` -> `Decision` JSON (see DESIGN §4.1). Attaches a fresh `decision_id`.  |
+| POST   | `/decompose` | `{prompt}` -> `{decision: "solo"\|"mixture", plan?, rule, decomposer_version}`. Rule-based, no encoder/head, sub-ms typical. Used by the plugin's UserPromptSubmit hook to auto-route homogeneous multi-leaf prompts. |
+| POST   | `/feedback`  | Append one outcome record (DESIGN §4.2) to `feedback.jsonl`. Last-write-wins by `decision_id`. |
+| GET    | `/metrics`   | Rolling JSON: prediction counts by decision & policy, p50/p99 latency, uptime, head version. |
+| POST   | `/reload`    | Re-read `heads/HEAD` and swap in the named head. Also happens automatically on mtime change. |
 
 ## State on disk
 

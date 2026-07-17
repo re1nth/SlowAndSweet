@@ -142,6 +142,44 @@ def _make_server(host: str, port: int) -> FastMCP:
             ) from None
 
     @mcp.tool()
+    def slm_run_stashed(stash_id: str) -> dict:
+        """Trigger a plan that the auto-route hook already stashed with the queue.
+
+        When the UserPromptSubmit hook decides the user's prompt maps to a
+        homogeneous multi-leaf pattern, it decomposes the prompt, POSTs the
+        resulting plan to the queue at /plans/stash, and injects a
+        `[autoroute]` context block containing the returned `stash_id`.
+
+        Prefer this over slm_submit_plan when a stash_id is present: the
+        plan is already parked at the queue, so calling this saves ~200-500
+        output tokens compared to re-emitting the full plan JSON as tool
+        arguments.
+
+        Stashes are one-shot (popped on trigger) and expire after 10
+        minutes. Returns: {"run_id": "<id>", "plan_id": "<id>"}.
+
+        After triggering, call slm_wait_plan(run_id) to block until all
+        nodes complete.
+        """
+        if DISABLED_FLAG.exists():
+            raise DelegationDisabled(
+                "delegation disabled via `slowandsweet disable`; "
+                "re-enable with `slowandsweet enable`"
+            )
+        try:
+            return _http_post(
+                f"{QUEUE_BASE}/plans/from_stash", {"stash_id": stash_id}
+            )
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"queue rejected stashed plan: {e.code} {detail}") from None
+        except urllib.error.URLError as e:
+            raise RuntimeError(
+                f"queue not reachable at {QUEUE_BASE} ({e.reason}). "
+                "Start it with: python3 slm-queue/server.py --port 8080"
+            ) from None
+
+    @mcp.tool()
     def slm_wait_plan(run_id: str, timeout_s: float = 180.0) -> dict:
         """Block until a plan run reaches a terminal state and return the
         full snapshot.

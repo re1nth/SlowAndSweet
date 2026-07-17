@@ -442,6 +442,46 @@ def make_handler(d: Dispatcher, registry: PlanRegistry):
                 self._json(202, {"run_id": run.run_id, "plan_id": plan.plan_id})
                 return
 
+            if self.path == "/plans/stash":
+                # Auto-route path: hook parks a plan here so the frontier can
+                # trigger it with only a stash_id, saving the ~200-500 output
+                # tokens it would otherwise spend serializing the plan JSON
+                # into slm_submit_plan arguments.
+                payload = self._read_json()
+                if payload is None:
+                    return
+                try:
+                    plan = Plan.from_dict(payload["plan"])
+                except (PlanError, KeyError) as e:
+                    self._json(400, {"error": f"{type(e).__name__}: {e}"})
+                    return
+                stash_id = registry.stash(plan)
+                self._json(200, {"stash_id": stash_id, "expires_in_s": int(registry.STASH_TTL_S)})
+                return
+
+            if self.path == "/plans/from_stash":
+                # One-shot: pop the stash and start the run. If the frontier
+                # ignores the hook's directive and never calls this, the
+                # stash just expires after STASH_TTL_S.
+                payload = self._read_json()
+                if payload is None:
+                    return
+                stash_id = payload.get("stash_id")
+                if not isinstance(stash_id, str) or not stash_id:
+                    self._json(400, {"error": "stash_id (non-empty string) required"})
+                    return
+                plan = registry.pop_stash(stash_id)
+                if plan is None:
+                    self._json(404, {"error": f"unknown or expired stash_id: {stash_id}"})
+                    return
+                try:
+                    choose_arm(plan.description or plan.plan_id)
+                except Exception:
+                    pass
+                run = _start_plan_run(plan, d, registry)
+                self._json(202, {"run_id": run.run_id, "plan_id": plan.plan_id})
+                return
+
             self._json(404, {"error": "not found"})
 
         def do_GET(self):
@@ -541,6 +581,7 @@ def main() -> int:
     print(f"\nlistening on http://127.0.0.1:{args.port}")
     print("  POST /tasks            GET /tasks/<id>     GET /status")
     print("  POST /plans            GET /plans          GET /plans/<run_id>[/ui]")
+    print("  POST /plans/stash      POST /plans/from_stash   (auto-route hook)")
     print(f"  GET  /ui               (plan files in {PLANS_DIR.relative_to(ROOT)}/)\n")
     try:
         server.serve_forever()
